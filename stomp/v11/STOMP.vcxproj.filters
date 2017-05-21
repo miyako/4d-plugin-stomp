@@ -52,6 +52,7 @@
     <ClCompile Include="..\4D Plugin API\Classes\C_TEXT.cpp">
       <Filter>Source\4D Plugin API\Classes\C</Filter>
     </ClCompile>
+    <ClCompile Include="..\libstomp\stomp.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\4DPlugin.h">
@@ -117,6 +118,7 @@
     <ClInclude Include="..\4D Plugin API\Classes\C_REAL.h">
       <Filter>Source\4D Plugin API\Classes\C</Filter>
     </ClInclude>
+    <ClInclude Include="..\libstomp\stomp.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source">
