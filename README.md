@@ -23,7 +23,7 @@ Parameter|Type|Description
 ------------|------------|----
 host|TEXT|
 port|LONGINT|
-stomp|LONGINT|
+stomp|LONGINT|context ID
 
 ```
 error:=STOMP Write (stomp;command;body;headerNames;headerValues{;timeout})
@@ -32,21 +32,21 @@ error:=STOMP Read (stomp;command;body;headerNames;headerValues{;timeout})
 
 Parameter|Type|Description
 ------------|------------|----
-stomp|LONGINT|
+stomp|LONGINT|context ID
 command|TEXT|
 body|TEXT|
 headerNames|ARRAY TEXT|
 headerValues|ARRAY TEXT|
 timeout|LONGINT|I/O timeout in milliseconds; default=``3000``
-error|LONGINT|
+error|LONGINT|[APR_ERRORNO](https://apr.apache.org/docs/apr/1.5/apr__errno_8h.html)
 ```
 error:=STOMP Disconnect (stomp)
 ```
 
 Parameter|Type|Description
 ------------|------------|----
-stomp|LONGINT|
-error|LONGINT|
+stomp|LONGINT|context ID
+error|LONGINT|[APR_ERRORNO](https://apr.apache.org/docs/apr/1.5/apr__errno_8h.html)
 
 ## Example
 
