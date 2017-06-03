@@ -26,8 +26,8 @@ port|LONGINT|
 stomp|LONGINT|
 
 ```
-error:=STOMP Write (stomp;command;body;headerNames;headerValues)
-error:=STOMP Read (stomp;command;body;headerNames;headerValues)
+error:=STOMP Write (stomp;command;body;headerNames;headerValues{;timeout})
+error:=STOMP Read (stomp;command;body;headerNames;headerValues{;timeout})
 ```
 
 Parameter|Type|Description
@@ -37,8 +37,8 @@ command|TEXT|
 body|TEXT|
 headerNames|ARRAY TEXT|
 headerValues|ARRAY TEXT|
+timeout|LONGINT|I/O timeout in milliseconds; default=``3000``
 error|LONGINT|
-
 ```
 error:=STOMP Disconnect (stomp)
 ```
