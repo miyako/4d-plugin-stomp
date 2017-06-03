@@ -50,6 +50,8 @@ error|LONGINT|
 
 ## Example
 
+Using [ActiveMQ](http://activemq.apache.org/getting-started.html)
+
 ```
 $stomp:=STOMP Connect ("127.0.0.1";61613)
 
@@ -77,7 +79,7 @@ If ($stomp>0)
       $headerNames{1}:="destination"
       $headerValues{1}:="/queue/FOO.BAR"
 
-      $err:=STOMP Write ($stomp;"SUB";"";$headerNames;$headerValues)
+      $err:=STOMP Write ($stomp;"SUBSCRIBE";"";$headerNames;$headerValues)
 
       $body:="This is the message"
 
