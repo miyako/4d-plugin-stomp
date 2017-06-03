@@ -435,6 +435,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = STOMP;
 				SECTORDER_FLAGS = "";
+				USER_HEADER_SEARCH_PATHS = "../include/MacOS/apr-1";
 				WARNING_CFLAGS = (
 					"-Wmost",
 					"-Wno-four-char-constants",
@@ -471,6 +472,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = STOMP;
 				SECTORDER_FLAGS = "";
+				USER_HEADER_SEARCH_PATHS = "../include/MacOS/apr-1";
 				WARNING_CFLAGS = (
 					"-Wmost",
 					"-Wno-four-char-constants",
@@ -505,6 +507,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = STOMP;
 				SECTORDER_FLAGS = "";
+				USER_HEADER_SEARCH_PATHS = "../include/MacOS/apr-1";
 				WARNING_CFLAGS = (
 					"-Wmost",
 					"-Wno-four-char-constants",

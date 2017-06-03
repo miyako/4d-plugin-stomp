@@ -222,12 +222,15 @@ void STOMP_Read(sLONG_PTR *pResult, PackagePtr pParams)
 	C_TEXT Param3_body;
 	ARRAY_TEXT Param4_headerNames;
 	ARRAY_TEXT Param5_headerValues;
+	C_LONGINT Param6_timeout;
 	C_LONGINT returnValue;
 
 	Param1.fromParamAtIndex(pParams, 1);
-
-	// --- write the code of STOMP_Read here...
-
+	Param6_timeout.fromParamAtIndex(pParams, 6);
+	
+	apr_interval_time_t timeout = (apr_interval_time_t)((unsigned int)Param6_timeout.getIntValue());
+	timeout = timeout ? timeout : 3000;
+	
 	apr_status_t rc;
 	
 	stomp_ctx *ctx = stomp_context_get(Param1.getIntValue());
@@ -235,7 +238,9 @@ void STOMP_Read(sLONG_PTR *pResult, PackagePtr pParams)
 	if(ctx)
 	{
 		stomp_frame *frame;
-		
+
+		apr_socket_timeout_set(ctx->connection->socket, timeout * 1000);
+
 		rc = stomp_read(ctx->connection, &frame, ctx->pool);
 		if(rc == APR_SUCCESS)
 		{
@@ -280,6 +285,7 @@ void STOMP_Write(sLONG_PTR *pResult, PackagePtr pParams)
 	C_TEXT Param3_body;
 	ARRAY_TEXT Param4_headerNames;
 	ARRAY_TEXT Param5_headerValues;
+	C_LONGINT Param6_timeout;
 	C_LONGINT returnValue;
 
 	Param1.fromParamAtIndex(pParams, 1);
@@ -287,7 +293,11 @@ void STOMP_Write(sLONG_PTR *pResult, PackagePtr pParams)
 	Param3_body.fromParamAtIndex(pParams, 3);
 	Param4_headerNames.fromParamAtIndex(pParams, 4);
 	Param5_headerValues.fromParamAtIndex(pParams, 5);
-
+	Param6_timeout.fromParamAtIndex(pParams, 6);
+	
+	apr_interval_time_t timeout = (apr_interval_time_t)((unsigned int)Param6_timeout.getIntValue());
+	timeout = timeout ? timeout : 3000;
+	
 	char *command, *body;
 	CUTF8String _command, _body;
 	Param2_command.copyUTF8String(&_command);
@@ -295,8 +305,6 @@ void STOMP_Write(sLONG_PTR *pResult, PackagePtr pParams)
 	command = (char *)_command.c_str();
 	body = (char *)_body.c_str();
 	
-	// --- write the code of STOMP_Write here...
-
 	apr_status_t rc;
 	
 	stomp_ctx *ctx = stomp_context_get(Param1.getIntValue());
@@ -304,6 +312,8 @@ void STOMP_Write(sLONG_PTR *pResult, PackagePtr pParams)
 	if(ctx)
 	{
 		stomp_frame frame;
+		
+		apr_socket_timeout_set(ctx->connection->socket, timeout * 1000);
 		
 		frame.command = command;
 		frame.body = _body.length() ? body : NULL;

@@ -549,7 +549,7 @@
 				OBJROOT = "$(SRCROOT)/build";
 				SDKROOT = macosx10.8;
 				SYMROOT = "$(SRCROOT)/$(PRODUCT_NAME).4dbase/Plugins";
-				USER_HEADER_SEARCH_PATHS = "include/apr-1";
+				USER_HEADER_SEARCH_PATHS = "include/MacOS/apr-1";
 			};
 			name = Development;
 		};
@@ -566,7 +566,7 @@
 				OBJROOT = "$(SRCROOT)/build";
 				SDKROOT = macosx10.8;
 				SYMROOT = "$(SRCROOT)/$(PRODUCT_NAME).4dbase/Plugins";
-				USER_HEADER_SEARCH_PATHS = "include/apr-1";
+				USER_HEADER_SEARCH_PATHS = "include/MacOS/apr-1";
 			};
 			name = Deployment;
 		};
@@ -581,7 +581,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				SDKROOT = macosx10.8;
 				SYMROOT = "$(SRCROOT)/$(PRODUCT_NAME).4dbase/Plugins";
-				USER_HEADER_SEARCH_PATHS = "include/apr-1";
+				USER_HEADER_SEARCH_PATHS = "include/MacOS/apr-1";
 			};
 			name = Default;
 		};

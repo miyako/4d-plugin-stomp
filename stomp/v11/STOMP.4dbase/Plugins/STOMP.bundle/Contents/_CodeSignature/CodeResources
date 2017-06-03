@@ -90,7 +90,7 @@
 		</data>
 		<key>Resources/Documentation/index.html</key>
 		<data>
-		cySu8zZ35DvkqlboNYG7QnJe2GA=
+		t8lU2R4F+WICjqnCMPY5oSw7nfA=
 		</data>
 		<key>Resources/Documentation/styles/common.css</key>
 		<data>
@@ -109,9 +109,17 @@
 		<data>
 		c3hBW6LqFPJmwbsDhkmmoa21o1o=
 		</data>
+		<key>Resources/LICENSE (apr)</key>
+		<data>
+		Lq4+Ciei5J6Go1DJRRPeDdsdLJg=
+		</data>
+		<key>Resources/LICENSE (libstomp)</key>
+		<data>
+		x7vQxAONoi7DhE0vNFGAZmHlfbE=
+		</data>
 		<key>Resources/STOMP.rsrc</key>
 		<data>
-		bgI8oYDQvnygbvsNyhGGR4CHhg0=
+		CO/Hlu4XjmYr+ZyCxZDI2Lv3nbw=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -371,11 +379,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			cySu8zZ35DvkqlboNYG7QnJe2GA=
+			t8lU2R4F+WICjqnCMPY5oSw7nfA=
 			</data>
 			<key>hash2</key>
 			<data>
-			2PVHh2dpKAlk4GvO+Ovbp1zo0SG3dzoODEUHa5XTfw0=
+			zeXBefHDtyLLIA76+64q+vOhaC0dxmsGoA2lC8YQyMU=
 			</data>
 		</dict>
 		<key>Resources/Documentation/styles/common.css</key>
@@ -413,37 +421,59 @@
 			l1GwaH+hHJ/doQPleC7+a8KRoqY4uQ1tjp6o2kxAQrg=
 			</data>
 		</dict>
+		<key>Resources/LICENSE (apr)</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			Lq4+Ciei5J6Go1DJRRPeDdsdLJg=
+			</data>
+			<key>hash2</key>
+			<data>
+			+FSu72bs1VoSYiboKz8meT/DscWEZH9qDtxWOZdMOK0=
+			</data>
+		</dict>
+		<key>Resources/LICENSE (libstomp)</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			x7vQxAONoi7DhE0vNFGAZmHlfbE=
+			</data>
+			<key>hash2</key>
+			<data>
+			vi6eEUkzd0To56PrCCm2z1QMZqqT4fU3DnWKEJM1mrI=
+			</data>
+		</dict>
 		<key>Resources/STOMP.rsrc</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			bgI8oYDQvnygbvsNyhGGR4CHhg0=
+			CO/Hlu4XjmYr+ZyCxZDI2Lv3nbw=
 			</data>
 			<key>hash2</key>
 			<data>
-			bQTmSHFSS3T26f0dATVrowcDGrt7Bx9bsPxb9/euwFo=
+			OXct4WMmcb6a9jPllLAGdvGb2+6d6fmV/mShQBC/19k=
 			</data>
 		</dict>
 		<key>Windows/STOMP.4DX</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			8WH79l2tgViHfCYSUBu+HCIQ5Es=
+			4mB70gL7jDE/so/tzO5Z+yxYIrs=
 			</data>
 			<key>hash2</key>
 			<data>
-			rp5mwPoToTOMBrO5g9ATVRBDkkR1XpJE6MF06FX5mo0=
+			BGmyOxJwy+NM3LgPBsd9shj9RuC5gAfGahMpupqrahA=
 			</data>
 		</dict>
 		<key>Windows/STOMP.RSR</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2gfxYTdCscsTwymTFPjkvgXXBng=
+			8xJb0wUQEHIXWaNndU2c3UNzvyA=
 			</data>
 			<key>hash2</key>
 			<data>
-			vNpFMv2ZryDmfc/9Epx+WVRLGTNVo3yNt7+GrxpW2DU=
+			GvCFWJQ5BVP6p52ykpq4w3ilICiU8f7LU19o1XI9330=
 			</data>
 		</dict>
 		<key>Windows/STOMP.html</key>
@@ -461,22 +491,22 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			r1aAHLsl1HqPOxOjnnlVMBT8weQ=
+			Pr9ibXvoIkid43eA6JynmJec6+U=
 			</data>
 			<key>hash2</key>
 			<data>
-			D81BlAXC8IYBjKsGDu0nx8Zm3OxlDG6/r2pFvj/FY7A=
+			dStfPi6ojITOj9MtG3IWv6z+OBJh9QP4ngvs3tgHQjo=
 			</data>
 		</dict>
 		<key>Windows64/STOMP.RSR</key>
 		<dict>
 			<key>hash</key>
 			<data>
-			2gfxYTdCscsTwymTFPjkvgXXBng=
+			8xJb0wUQEHIXWaNndU2c3UNzvyA=
 			</data>
 			<key>hash2</key>
 			<data>
-			vNpFMv2ZryDmfc/9Epx+WVRLGTNVo3yNt7+GrxpW2DU=
+			GvCFWJQ5BVP6p52ykpq4w3ilICiU8f7LU19o1XI9330=
 			</data>
 		</dict>
 		<key>Windows64/STOMP.html</key>
