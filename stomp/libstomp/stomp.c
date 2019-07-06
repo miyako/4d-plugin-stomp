@@ -35,7 +35,7 @@ APR_DECLARE(apr_status_t) stomp_connect(stomp_connection **connection_ref, const
 	//
 	// Allocate the connection and a memory pool for the connection.
 	//
-	connection = apr_pcalloc(pool, sizeof(stomp_connection));
+	connection = (stomp_connection *)apr_pcalloc(pool, sizeof(stomp_connection));
 	if( connection == NULL )
 		return APR_ENOMEM;
    
@@ -123,7 +123,7 @@ typedef struct data_block_list {
    struct data_block_list *next;
 } data_block_list;
 
-APR_DECLARE(apr_status_t) stomp_read_line(stomp_connection *connection, char **data, int* length, apr_pool_t *pool)
+APR_DECLARE(apr_status_t) stomp_read_line(stomp_connection *connection, char **data, apr_size_t* length, apr_pool_t *pool)
 {
    apr_pool_t *tpool;
    apr_status_t rc;
@@ -137,7 +137,7 @@ APR_DECLARE(apr_status_t) stomp_read_line(stomp_connection *connection, char **d
       return rc;
    }
       
-   head = tail = apr_pcalloc(tpool, sizeof(data_block_list));
+   head = tail = (data_block_list *)apr_pcalloc(tpool, sizeof(data_block_list));
    if( head == NULL )
       return APR_ENOMEM;
 
@@ -166,7 +166,7 @@ APR_DECLARE(apr_status_t) stomp_read_line(stomp_connection *connection, char **d
          
          // Do we need to allocate a new block?
          if( i >= sizeof( tail->data) ) {            
-            tail->next = apr_pcalloc(tpool, sizeof(data_block_list));
+            tail->next = (data_block_list *)apr_pcalloc(tpool, sizeof(data_block_list));
             if( tail->next == NULL ) {
                apr_pool_destroy(tpool);
                return APR_ENOMEM;
@@ -179,7 +179,7 @@ APR_DECLARE(apr_status_t) stomp_read_line(stomp_connection *connection, char **d
 
 #undef CHECK_SUCCESS
    // Now we have the whole frame and know how big it is.  Allocate it's buffer
-   *data = apr_pcalloc(pool, bytesRead);
+   *data = (char *)apr_pcalloc(pool, bytesRead);
    p = *data;
    if( p==NULL ) {
       apr_pool_destroy(tpool);
@@ -189,7 +189,7 @@ APR_DECLARE(apr_status_t) stomp_read_line(stomp_connection *connection, char **d
    // Copy the frame over to the new buffer.
    *length = bytesRead - 1;
    for( ;head != NULL; head = head->next ) {
-      int len = bytesRead > sizeof(head->data) ? sizeof(head->data) : bytesRead;
+      apr_size_t len = bytesRead > sizeof(head->data) ? sizeof(head->data) : bytesRead;
       memcpy(p,head->data,len);
       p+=len;
       bytesRead-=len;
@@ -213,7 +213,7 @@ APR_DECLARE(apr_status_t) stomp_read_buffer(stomp_connection *connection, char *
       return rc;
    }
       
-   head = tail = apr_pcalloc(tpool, sizeof(data_block_list));
+   head = tail = (data_block_list *)apr_pcalloc(tpool, sizeof(data_block_list));
    if( head == NULL )
       return APR_ENOMEM;
    
@@ -244,7 +244,7 @@ APR_DECLARE(apr_status_t) stomp_read_buffer(stomp_connection *connection, char *
          
          // Do we need to allocate a new block?
          if( i >= sizeof( tail->data) ) {            
-            tail->next = apr_pcalloc(tpool, sizeof(data_block_list));
+            tail->next = (data_block_list *)apr_pcalloc(tpool, sizeof(data_block_list));
             if( tail->next == NULL ) {
                apr_pool_destroy(tpool);
                return APR_ENOMEM;
@@ -257,7 +257,7 @@ APR_DECLARE(apr_status_t) stomp_read_buffer(stomp_connection *connection, char *
 #undef CHECK_SUCCESS
    
    // Now we have the whole frame and know how big it is.  Allocate it's buffer
-   *data = apr_pcalloc(pool, bytesRead);
+   *data = (char *)apr_pcalloc(pool, bytesRead);
    p = *data;
    if( p==NULL ) {
       apr_pool_destroy(tpool);
@@ -266,7 +266,7 @@ APR_DECLARE(apr_status_t) stomp_read_buffer(stomp_connection *connection, char *
    
    // Copy the frame over to the new buffer.
    for( ;head != NULL; head = head->next ) {
-      int len = bytesRead > sizeof(head->data) ? sizeof(head->data) : bytesRead;
+      apr_size_t len = bytesRead > sizeof(head->data) ? sizeof(head->data) : bytesRead;
       memcpy(p,head->data,len);
       p+=len;
       bytesRead-=len;
@@ -301,11 +301,11 @@ APR_DECLARE(apr_status_t) stomp_write(stomp_connection *connection, stomp_frame 
       for (i = apr_hash_first(NULL, frame->headers); i; i = apr_hash_next(i)) {
          apr_hash_this(i, &key, NULL, &value);
          
-         rc = stomp_write_buffer(connection, key, strlen(key));
+         rc = stomp_write_buffer(connection, (const char *)key, strlen((const char *)key));
          CHECK_SUCCESS;
          rc = stomp_write_buffer(connection, ":", 1);
          CHECK_SUCCESS;
-         rc = stomp_write_buffer(connection, value, strlen(value));
+         rc = stomp_write_buffer(connection, (const char *)value, strlen((const char *)value));
          CHECK_SUCCESS;
          rc = stomp_write_buffer(connection, "\n", 1);
          CHECK_SUCCESS;  
@@ -319,7 +319,7 @@ APR_DECLARE(apr_status_t) stomp_write(stomp_connection *connection, stomp_frame 
 		  rc = stomp_write_buffer(connection, "content-length:", 15);
 		  CHECK_SUCCESS;
 		  
-		  length_string = apr_itoa(length_pool, frame->body_length);
+		  length_string = apr_itoa(length_pool, (int)frame->body_length);
 		  rc = stomp_write_buffer(connection, length_string, strlen(length_string));
 		  CHECK_SUCCESS;
 		  rc = stomp_write_buffer(connection, "\n", 1);
@@ -333,7 +333,7 @@ APR_DECLARE(apr_status_t) stomp_write(stomp_connection *connection, stomp_frame 
    
    // Write the body.
    if( frame->body != NULL ) {
-      int body_length = frame->body_length;
+      apr_size_t body_length = frame->body_length;
 	  if(body_length < 0)
 		  body_length = strlen(frame->body);
       rc = stomp_write_buffer(connection, frame->body, body_length);
@@ -352,7 +352,7 @@ APR_DECLARE(apr_status_t) stomp_read(stomp_connection *connection, stomp_frame *
    apr_status_t rc;
    stomp_frame *f;
       
-   f = apr_pcalloc(pool, sizeof(stomp_frame));
+   f = (stomp_frame *)apr_pcalloc(pool, sizeof(stomp_frame));
    if( f == NULL )
       return APR_ENOMEM;
    
@@ -365,7 +365,7 @@ APR_DECLARE(apr_status_t) stomp_read(stomp_connection *connection, stomp_frame *
    // Parse the frame out.
    {
       char *p;
-	  int length;
+	  apr_size_t length;
       
       // Parse the command.
 	  rc = stomp_read_line(connection, &p, &length, pool);
@@ -408,13 +408,13 @@ APR_DECLARE(apr_status_t) stomp_read(stomp_connection *connection, stomp_frame *
       
       // Check for content length
 	  {
-		  char* content_length = apr_hash_get(f->headers, "content-length", APR_HASH_KEY_STRING);
+		  char* content_length = (char*)apr_hash_get(f->headers, "content-length", APR_HASH_KEY_STRING);
 		  if(content_length) {
 			  char endbuffer[2];
 			  apr_size_t length = 2;
 
 			  f->body_length = atoi(content_length);
-			  f->body = apr_pcalloc(pool, f->body_length);
+			  f->body = (char*)apr_pcalloc(pool, f->body_length);
 			  rc = apr_socket_recv(connection->socket, f->body, &f->body_length);
 			  CHECK_SUCCESS;
 
