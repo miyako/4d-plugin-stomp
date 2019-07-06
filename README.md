@@ -99,3 +99,5 @@ End if
 ```
 
 **Note**: Error codes are negative translations of ``APR ERROR VALUES``. ``-1`` means the context ID was invalid.
+
+``winsock`` error codes may be different across platforms.
