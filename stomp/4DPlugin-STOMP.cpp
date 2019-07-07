@@ -68,17 +68,36 @@ void stomp_context_remove(uint32_t i) {
     }
 }
 
+#pragma mark -
+
 #pragma mark frame header
 
 typedef struct {
     
     ARRAY_TEXT *headerNames;
     ARRAY_TEXT *headerValues;
-}frame_header;
+}frame_header_arr;
 
-int get_frame_header(void *rec, const void *key, apr_ssize_t klen, const void *value) {
+typedef struct {
     
-    frame_header *f = (frame_header *)rec;
+    PA_ObjectRef *headerValues;
+}frame_header_obj;
+
+int get_frame_header_obj(void *rec, const void *key, apr_ssize_t klen, const void *value) {
+    
+    frame_header_obj *f = (frame_header_obj *)rec;
+    std::string headerName, headerValue;
+    headerName = std::string((const char *)key, klen);
+    headerValue = std::string((const char *)value);
+    
+    ob_set_s((*(f->headerValues)), headerName.c_str(), headerValue.c_str());
+    
+    return 1;
+}
+
+int get_frame_header_arr(void *rec, const void *key, apr_ssize_t klen, const void *value) {
+    
+    frame_header_arr *f = (frame_header_arr *)rec;
     CUTF8String headerName, headerValue;
     headerName = CUTF8String((const uint8_t *)key, klen);
     headerValue = CUTF8String((const uint8_t *)value);
@@ -108,7 +127,6 @@ void OnStartup()
 }
 
 #pragma mark -
-#pragma mark -
 
 void PluginMain(PA_long32 selector, PA_PluginParameters params) {
     
@@ -131,13 +149,19 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params) {
                 STOMP_Connect(params);
                 break;
             case 2 :
-                STOMP_Read(params);
+                _o_STOMP_Read(params);
                 break;
             case 3 :
-                STOMP_Write(params);
+                _o_STOMP_Write(params);
                 break;
             case 4 :
                 STOMP_Disconnect(params);
+                break;
+            case 5 :
+                STOMP_Read(params);
+                break;
+            case 6 :
+                STOMP_Write(params);
                 break;
         }
 
@@ -150,8 +174,8 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params) {
 
 #pragma mark -
 
-void STOMP_Read(PA_PluginParameters params) {
-
+void _o_STOMP_Read(PA_PluginParameters params) {
+    
     C_TEXT Param2_command;
     C_TEXT Param3_body;
     ARRAY_TEXT Param4_headerNames;
@@ -187,10 +211,10 @@ void STOMP_Read(PA_PluginParameters params) {
             {
                 Param4_headerNames.setSize(1);
                 Param5_headerValues.setSize(1);
-                frame_header f;
+                frame_header_arr f;
                 f.headerNames = &Param4_headerNames;
                 f.headerValues = &Param5_headerValues;
-                apr_hash_do(get_frame_header, &f, headers);
+                apr_hash_do(get_frame_header_arr, &f, headers);
             }
             
         }
@@ -207,7 +231,157 @@ void STOMP_Read(PA_PluginParameters params) {
     Param5_headerValues.toParamAtIndex((PackagePtr)params->fParameters, 5);
 }
 
+void STOMP_Read(PA_PluginParameters params) {
+
+    C_TEXT Param2_command;
+    C_TEXT Param3_body;
+
+    PA_ObjectRef Param4_headerValues = PA_GetObjectParameter( params, 4 );
+    
+    apr_interval_time_t timeout = (apr_interval_time_t)
+    ((unsigned int)PA_GetLongParameter(params, 5));
+    
+    timeout = timeout ? timeout : 3000;
+    
+    apr_status_t rc;
+    
+    PA_long32 ctxId = PA_GetLongParameter(params, 1);
+    stomp_ctx *ctx = stomp_context_get(ctxId);
+    
+    if(ctx)
+    {
+        stomp_frame *frame;
+        
+        apr_socket_timeout_set(ctx->connection->socket, timeout * 1000);
+        
+        rc = stomp_read(ctx->connection, &frame, ctx->pool);
+        if(rc == APR_SUCCESS)
+        {
+            CUTF8String _command = CUTF8String((const uint8_t *)frame->command);
+            CUTF8String _body = CUTF8String((const uint8_t *)frame->body, frame->body_length == -1 ? 0 : frame->body_length);
+            
+            Param2_command.setUTF8String(&_command);
+            Param3_body.setUTF8String(&_body);
+            
+            apr_hash_t *headers = frame->headers;
+            if(apr_hash_count(headers))
+            {
+                if(Param4_headerValues)
+                {
+                    frame_header_obj f;
+                    f.headerValues = &Param4_headerValues;
+                    apr_hash_do(get_frame_header_obj, &f, headers);
+                }
+            }
+        }
+        PA_ReturnLong(params, -rc);
+        
+    }else
+    {
+        PA_ReturnLong(params, -1);
+    }
+    
+    Param2_command.toParamAtIndex((PackagePtr)params->fParameters, 2);
+    Param3_body.toParamAtIndex((PackagePtr)params->fParameters, 3);
+    
+}
+
 void STOMP_Write(PA_PluginParameters params) {
+
+    C_TEXT Param2_command;
+    C_TEXT Param3_body;
+    
+    Param2_command.fromParamAtIndex((PackagePtr)params->fParameters, 2);
+    Param3_body.fromParamAtIndex((PackagePtr)params->fParameters, 3);
+    PA_ObjectRef Param4_headerValues = PA_GetObjectParameter( params, 4 );
+
+    apr_interval_time_t timeout = (apr_interval_time_t)
+    ((unsigned int)PA_GetLongParameter(params, 5));
+    
+    timeout = timeout ? timeout : 3000;
+    
+    char *command, *body;
+    CUTF8String _command, _body;
+    Param2_command.copyUTF8String(&_command);
+    Param3_body.copyUTF8String(&_body);
+    command = (char *)_command.c_str();
+    body = (char *)_body.c_str();
+    
+    apr_status_t rc;
+    
+    PA_long32 ctxId = PA_GetLongParameter(params, 1);
+    stomp_ctx *ctx = stomp_context_get(ctxId);
+    
+    if(ctx)
+    {
+        stomp_frame frame;
+        
+        apr_socket_timeout_set(ctx->connection->socket, timeout * 1000);
+        
+        frame.command = command;
+        frame.body = _body.length() ? body : NULL;
+        frame.body_length = _body.length(); //not using -1 (strlen)
+        frame.headers = apr_hash_make(ctx->pool);
+        
+        bool withHeaders = false;
+        
+        /*
+          OB GET PROPERTY NAMES + PA_ExecuteCommandByID is toxic
+         */
+
+        CUTF8String json;
+        
+        ob_stringify(Param4_headerValues, &json);
+
+        using namespace std;
+        using namespace Json;
+        
+        Value root;
+        CharReaderBuilder builder;
+        string errors;
+        
+        CharReader *reader = builder.newCharReader();
+        bool parse = reader->parse((const char *)json.c_str(),
+                                   (const char *)json.c_str() + json.size(),
+                                   &root,
+                                   &errors);
+        delete reader;
+        
+        if(parse)
+        {
+            for(Value::const_iterator it = root.begin() ; it != root.end() ; it++)
+            {
+                JSONCPP_STRING name = it.name();
+
+                if(it->isString())
+                {
+                    string value = it->asString();
+                    apr_hash_set(frame.headers,
+                                 name.c_str(),
+                                 APR_HASH_KEY_STRING,
+                                 value.c_str());
+                    withHeaders = true;
+                }
+            }
+        }
+    
+        if(!withHeaders)
+        {
+            frame.headers = NULL;
+        }
+        
+        rc = stomp_write(ctx->connection, &frame, ctx->pool);
+        
+        PA_ReturnLong(params, -rc);
+        
+    }else
+    {
+        PA_ReturnLong(params, -1);
+    }
+
+}
+
+void _o_STOMP_Write(PA_PluginParameters params) {
 
     C_TEXT Param2_command;
     C_TEXT Param3_body;

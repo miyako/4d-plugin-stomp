@@ -23,9 +23,12 @@
 		D1C9E72522D0C7F10061B7CD /* stomp.c in Sources */ = {isa = PBXBuildFile; fileRef = D1C9E72422D0C7F10061B7CD /* stomp.c */; };
 		D1C9E72C22D0CD4C0061B7CD /* C_TEXT.h in Headers */ = {isa = PBXBuildFile; fileRef = D1C9E72722D0CD4C0061B7CD /* C_TEXT.h */; };
 		D1C9E72D22D0CD4C0061B7CD /* C_TYPES.h in Headers */ = {isa = PBXBuildFile; fileRef = D1C9E72822D0CD4C0061B7CD /* C_TYPES.h */; };
-		D1C9E72E22D0CD4C0061B7CD /* C_TEXT.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1C9E72922D0CD4C0061B7CD /* C_TEXT.cpp */; };
-		D1C9E72F22D0CD4C0061B7CD /* ARRAY_TEXT.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1C9E72A22D0CD4C0061B7CD /* ARRAY_TEXT.cpp */; };
+		D1C9E72E22D0CD4C0061B7CD /* C_TEXT.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1C9E72922D0CD4C0061B7CD /* C_TEXT.cpp */; settings = {COMPILER_FLAGS = "-w"; }; };
+		D1C9E72F22D0CD4C0061B7CD /* ARRAY_TEXT.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1C9E72A22D0CD4C0061B7CD /* ARRAY_TEXT.cpp */; settings = {COMPILER_FLAGS = "-w"; }; };
 		D1C9E73022D0CD4C0061B7CD /* ARRAY_TEXT.h in Headers */ = {isa = PBXBuildFile; fileRef = D1C9E72B22D0CD4C0061B7CD /* ARRAY_TEXT.h */; };
+		D1C9E73322D154420061B7CD /* 4DPlugin-JSON.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1C9E73122D154420061B7CD /* 4DPlugin-JSON.cpp */; };
+		D1C9E73422D154420061B7CD /* 4DPlugin-JSON.h in Headers */ = {isa = PBXBuildFile; fileRef = D1C9E73222D154420061B7CD /* 4DPlugin-JSON.h */; };
+		D1C9E73822D16ABB0061B7CD /* libjsoncpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C9E73722D16ABB0061B7CD /* libjsoncpp.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -64,6 +67,10 @@
 		D1C9E72922D0CD4C0061B7CD /* C_TEXT.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = C_TEXT.cpp; sourceTree = "<group>"; };
 		D1C9E72A22D0CD4C0061B7CD /* ARRAY_TEXT.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = ARRAY_TEXT.cpp; sourceTree = "<group>"; };
 		D1C9E72B22D0CD4C0061B7CD /* ARRAY_TEXT.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARRAY_TEXT.h; sourceTree = "<group>"; };
+		D1C9E73122D154420061B7CD /* 4DPlugin-JSON.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = "4DPlugin-JSON.cpp"; path = "support/4DPlugin-JSON.cpp"; sourceTree = "<group>"; };
+		D1C9E73222D154420061B7CD /* 4DPlugin-JSON.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "4DPlugin-JSON.h"; path = "support/4DPlugin-JSON.h"; sourceTree = "<group>"; };
+		D1C9E73522D16A9A0061B7CD /* libjson.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjson.a; path = a/libjson.a; sourceTree = "<group>"; };
+		D1C9E73722D16ABB0061B7CD /* libjsoncpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjsoncpp.a; path = a/libjsoncpp.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +78,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1C9E73822D16ABB0061B7CD /* libjsoncpp.a in Frameworks */,
 				D1C9E72322D0C76E0061B7CD /* libapr-1.a in Frameworks */,
 				D130064F12F02D9700702C0E /* Cocoa.framework in Frameworks */,
 			);
@@ -114,6 +122,8 @@
 			children = (
 				18B684FE06944F8800CC6A1E /* 4DPlugin-STOMP.cpp */,
 				D120937E13534DCC00A72CAA /* 4DPlugin-STOMP.h */,
+				D1C9E73122D154420061B7CD /* 4DPlugin-JSON.cpp */,
+				D1C9E73222D154420061B7CD /* 4DPlugin-JSON.h */,
 				D1C9E72422D0C7F10061B7CD /* stomp.c */,
 				D1C9E72022D0C7460061B7CD /* stomp.h */,
 				18B684ED06944F2000CC6A1E /* 4D Plugin API */,
@@ -155,6 +165,8 @@
 		D16FBB3C22A4C07E008F0416 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D1C9E73722D16ABB0061B7CD /* libjsoncpp.a */,
+				D1C9E73522D16A9A0061B7CD /* libjson.a */,
 				D1C9E72222D0C76E0061B7CD /* libapr-1.a */,
 			);
 			name = Frameworks;
@@ -180,6 +192,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D1C9E72122D0C7460061B7CD /* stomp.h in Headers */,
+				D1C9E73422D154420061B7CD /* 4DPlugin-JSON.h in Headers */,
 				18B684F706944F2000CC6A1E /* 4DPluginAPI.h in Headers */,
 				18B684F806944F2000CC6A1E /* EntryPoints.h in Headers */,
 				18B684F906944F2000CC6A1E /* Flags.h in Headers */,
@@ -297,6 +310,7 @@
 				18B684FF06944F8800CC6A1E /* 4DPlugin-STOMP.cpp in Sources */,
 				D1C9E72F22D0CD4C0061B7CD /* ARRAY_TEXT.cpp in Sources */,
 				D1C9E72E22D0CD4C0061B7CD /* C_TEXT.cpp in Sources */,
+				D1C9E73322D154420061B7CD /* 4DPlugin-JSON.cpp in Sources */,
 				D13116A91A03ACB700DE1322 /* 4DPluginAPI.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -501,7 +515,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				OBJROOT = "$(SRCROOT)/build";
 				SDKROOT = macosx;
 				SYMROOT = "$(SRCROOT)/test/Plugins";
@@ -545,7 +559,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				OBJROOT = "$(SRCROOT)/build";
 				SDKROOT = macosx;
 				SYMROOT = "$(SRCROOT)/test/Plugins";
@@ -588,7 +602,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
 				SYMROOT = "$(SRCROOT)/test/Plugins";
 				USER_HEADER_SEARCH_PATHS = "include/MacOS/apr-1";

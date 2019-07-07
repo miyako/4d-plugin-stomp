@@ -17,6 +17,8 @@
 #ifndef STOMP_H
 #define STOMP_H
 
+//#include "4DPluginAPI.h"
+
 #include "apr_general.h"
 #include "apr_network_io.h"
 #include "apr_hash.h"

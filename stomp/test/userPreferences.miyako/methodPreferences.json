@@ -173,10 +173,19 @@
 	"Sources/Methods/TEST.4dm": {
 		"startSelection": 0,
 		"endSelection": 0,
-		"firstSelectedLine": 15,
-		"lastSelectedLine": 15,
+		"firstSelectedLine": 40,
+		"lastSelectedLine": 40,
 		"folding": [],
 		"bookmarks": [],
-		"stamp": "2019-07-06T12:53:32.000Z"
+		"stamp": "2019-07-07T00:11:38.643Z"
+	},
+	"Sources/Methods/TEST_v17.4dm": {
+		"startSelection": 0,
+		"endSelection": 0,
+		"firstSelectedLine": 0,
+		"lastSelectedLine": 0,
+		"folding": [],
+		"bookmarks": [],
+		"stamp": "2019-07-07T00:13:49.000Z"
 	}
 }

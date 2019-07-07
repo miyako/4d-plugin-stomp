@@ -11,11 +11,12 @@ If ($stomp>0)
 	$headerValues{1}:="admin"
 	$headerValues{2}:="admin"
 	
-	$err:=STOMP Write ($stomp;"CONNECT";"";$headerNames;$headerValues)
+	$err:=_o_STOMP Write ($stomp;"CONNECT";"";$headerNames;$headerValues)
+	
 	  //NOTE: the array pairs are unchanged for STOMP write
 	If ($err=0)
 		
-		$err:=STOMP Read ($stomp;$command;$body;$headerNames;$headerValues)
+		$err:=_o_STOMP Read ($stomp;$command;$body;$headerNames;$headerValues)
 		
 		If ($err=0) & ($command="CONNECTED")
 			
@@ -25,15 +26,15 @@ If ($stomp>0)
 			$headerNames{1}:="destination"
 			$headerValues{1}:="/queue/FOO.BAR"
 			
-			$err:=STOMP Write ($stomp;"SUBSCRIBE";"";$headerNames;$headerValues)
+			$err:=_o_STOMP Write ($stomp;"SUBSCRIBE";"";$headerNames;$headerValues)
 			
 			$body:="This is the message"
 			
-			$err:=STOMP Write ($stomp;"SEND";$body;$headerNames;$headerValues)
+			$err:=_o_STOMP Write ($stomp;"SEND";$body;$headerNames;$headerValues)
 			
-			$err:=STOMP Read ($stomp;$command;$body;$headerNames;$headerValues)
+			$err:=_o_STOMP Read ($stomp;$command;$body;$headerNames;$headerValues)
 			
-			$err:=STOMP Write ($stomp;"DISCONNECT")
+			$err:=_o_STOMP Write ($stomp;"DISCONNECT")
 			
 		End if 
 		

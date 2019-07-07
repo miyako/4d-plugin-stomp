@@ -32,6 +32,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCpp</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCpp</CompileAs>
     </ClCompile>
+    <ClCompile Include="support\4DPlugin-JSON.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="4D Plugin API\4DPluginAPI.h" />
@@ -44,6 +45,7 @@
     <ClInclude Include="4D Plugin API\PublicTypes.h" />
     <ClInclude Include="4DPlugin-STOMP.h" />
     <ClInclude Include="libstomp\stomp.h" />
+    <ClInclude Include="support\4DPlugin-JSON.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="4D Plugin API\4DPluginAPI.def" />
@@ -116,7 +118,7 @@
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)\lib\windows;$(VCInstallDir)lib;$(VCInstallDir)atlmfc\lib;$(WindowsSdkDir)lib;$(FrameworkSDKDir)\lib</LibraryPath>
     <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
-    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\include\windows64;$(IncludePath);$(VCInstallDir)atlmfc\include</IncludePath>
+    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\lib\windows64;$(LibraryPath);$(VSInstallDir);$(VSInstallDir)lib\amd64</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -190,7 +192,7 @@
       <TargetMachine>MachineX86</TargetMachine>
       <EntryPointSymbol>
       </EntryPointSymbol>
-      <AdditionalDependencies>apr-1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>jsoncpp.lib;apr-1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)lib\windows;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -214,7 +216,7 @@
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalDependencies>apr-1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>jsoncpp.lib;apr-1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)lib\windows64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>

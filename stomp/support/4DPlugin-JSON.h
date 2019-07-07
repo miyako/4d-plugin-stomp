@@ -16,7 +16,7 @@
 //BSD wrappers
 #define close closesocket
 #define TickCount GetTickCount
-#define getpid GetCurrentProcessId
+//#define getpid GetCurrentProcessId
 #include <winsock2.h>
 
 #include <ws2tcpip.h>
@@ -53,7 +53,10 @@ typedef std::basic_string<uint8_t> CUTF8String;
 void json_wconv(const wchar_t *value, CUTF16String *u16);
 
 void ob_set_p(PA_ObjectRef obj, const wchar_t *_key, PA_Picture value);
+
 void ob_set_s(PA_ObjectRef obj, const wchar_t *_key, const char *_value);
+void ob_set_s(PA_ObjectRef obj, const char *_key, const char *_value);
+
 void ob_set_a(PA_ObjectRef obj, const wchar_t *_key, const wchar_t *_value);
 void ob_set_c(PA_ObjectRef obj, const wchar_t *_key, PA_CollectionRef value);
 void ob_set_o(PA_ObjectRef obj, const wchar_t *_key, PA_ObjectRef value);
@@ -65,5 +68,7 @@ bool ob_get_a(PA_ObjectRef obj, const wchar_t *_key, CUTF8String *value);
 bool ob_get_b(PA_ObjectRef obj, const wchar_t *_key);
 double ob_get_n(PA_ObjectRef obj, const wchar_t *_key);
 PA_CollectionRef ob_get_c(PA_ObjectRef obj, const wchar_t *_key);
+
+void ob_stringify(PA_ObjectRef obj, CUTF8String *value);
 
 #endif /* PLUGIN_JSON_H */

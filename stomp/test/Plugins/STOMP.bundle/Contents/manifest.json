@@ -9,17 +9,27 @@
         },
         {
             "theme": "STOMP",
-            "syntax": "STOMP Read(&L;&T;&T;&Y;&Y;&L):L",
+            "syntax": "_o_STOMP Read(&L;&T;&T;&Y;&Y;&L):L",
             "threadSafe": true
         },
         {
             "theme": "STOMP",
-            "syntax": "STOMP Write(&L;&T;&T;&Y;&Y;&L):L",
+            "syntax": "_o_STOMP Write(&L;&T;&T;&Y;&Y;&L):L",
             "threadSafe": true
         },
         {
             "theme": "STOMP",
             "syntax": "STOMP Disconnect(&L):L",
+            "threadSafe": true
+        },
+        {
+            "theme": "STOMP",
+            "syntax": "STOMP Read(&L;&T;&T;&J;&L):L",
+            "threadSafe": true
+        },
+        {
+            "theme": "STOMP",
+            "syntax": "STOMP Write(&L;&T;&T;&J;&L):L",
             "threadSafe": true
         }
     ]

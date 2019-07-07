@@ -33,12 +33,12 @@
 //#define TickCount GetTickCount
 //#define getpid GetCurrentProcessId
 //#include <winsock2.h>
-//
-//#include <ws2tcpip.h>
+
+#include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Mswsock.lib")//TransmitFile
 #pragma comment(lib, "Rpcrt4.lib")//UuidCreate
-//
+
 #include <windows.h>
 //#include <iphlpapi.h>
 //#include <icmpapi.h>
