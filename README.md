@@ -17,4 +17,4 @@ STOMP client ([libstomp](https://github.com/a3linux/libstomp) implementation)
 
 ### Discussion
 
-It seems combination of ``OB GET PROPERTY NAMES`` and ``PA_ExecuteCommandByID`` is toxic. To iterate over properties of an object property, the object is internally stringified and parsed using a 3rd party library.
+It seems the combination of ``OB GET PROPERTY NAMES`` and ``PA_ExecuteCommandByID`` is toxic. To iterate over properties of an object property, the object is internally stringified and parsed using a 3rd party library.
