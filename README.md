@@ -5,99 +5,24 @@ STOMP client ([libstomp](https://github.com/a3linux/libstomp) implementation)
 
 | carbon | cocoa | win32 | win64 |
 |:------:|:-----:|:---------:|:---------:|
-|<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" />|<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" />|<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" />|<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" />|
+||<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" /> |<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" /> |<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" /> 
 
 ### Version
 
-<img src="https://cloud.githubusercontent.com/assets/1725068/18940649/21945000-8645-11e6-86ed-4a0f800e5a73.png" width="32" height="32" /> <img src="https://cloud.githubusercontent.com/assets/1725068/18940648/2192ddba-8645-11e6-864d-6d5692d55717.png" width="32" height="32" />
+<img src="https://user-images.githubusercontent.com/1725068/41266195-ddf767b2-6e30-11e8-9d6b-2adf6a9f57a5.png" width="32" height="32" />
 
-**Minimum Windows version**: [TransmitFile](https://msdn.microsoft.com/en-us/library/windows/desktop/ms740565(v=vs.85).aspx) requires Vista or above.
+### Syntax
 
-## Syntax
+[miyako.github.io](https://miyako.github.io/2019/07/07/4d-plugin-stomp.html)
 
-```
-stomp:=STOMP Connect (host;port)
-```
+### Discussion
 
-Parameter|Type|Description
-------------|------------|----
-host|TEXT|
-port|LONGINT|
-stomp|LONGINT|context ID
+It seems the combination of ``OB GET PROPERTY NAMES`` and ``PA_ExecuteCommandByID`` is toxic. To iterate over properties of an object property, the object is internally stringified and parsed using a 3rd party library.
 
-```
-error:=STOMP Write (stomp;command;body;headerNames;headerValues{;timeout})
-error:=STOMP Read (stomp;command;body;headerNames;headerValues{;timeout})
-```
+to compile with Windows Visual Studio
 
-Parameter|Type|Description
-------------|------------|----
-stomp|LONGINT|context ID
-command|TEXT|
-body|TEXT|
-headerNames|ARRAY TEXT|
-headerValues|ARRAY TEXT|
-timeout|LONGINT|I/O timeout in milliseconds; default=``3000``
-error|LONGINT|[APR_ERRORNO](https://apr.apache.org/docs/apr/1.5/apr__errno_8h.html)
-```
-error:=STOMP Disconnect (stomp)
-```
+* It is no longer necessary (in fact it will result in an error) to load ``<winsock2.h>`` before ``<windows.h>``
 
-Parameter|Type|Description
-------------|------------|----
-stomp|LONGINT|context ID
-error|LONGINT|[APR_ERRORNO](https://apr.apache.org/docs/apr/1.5/apr__errno_8h.html)
+* Link ``Rpcrt4.lib`` for ``UuidCreate``
 
-## Example
-
-Using [ActiveMQ](http://activemq.apache.org/getting-started.html)
-
-```
-$stomp:=STOMP Connect ("127.0.0.1";61613)
-
-If ($stomp>0)
-
-  ARRAY TEXT($headerNames;2)
-  ARRAY TEXT($headerValues;2)
-
-  $headerNames{1}:="login"
-  $headerNames{2}:="passcode"
-  $headerValues{1}:="admin"
-  $headerValues{2}:="admin"
-
-  $err:=STOMP Write ($stomp;"CONNECT";"";$headerNames;$headerValues)
-    //NOTE: the array pairs are unchanged for STOMP write
-  If ($err=0)
-
-    $err:=STOMP Read ($stomp;$command;$body;$headerNames;$headerValues)
-
-    If ($err=0) & ($command="CONNECTED")
-
-      ARRAY TEXT($headerNames;1)
-      ARRAY TEXT($headerValues;1)
-
-      $headerNames{1}:="destination"
-      $headerValues{1}:="/queue/FOO.BAR"
-
-      $err:=STOMP Write ($stomp;"SUBSCRIBE";"";$headerNames;$headerValues)
-
-      $body:="This is the message"
-
-      $err:=STOMP Write ($stomp;"SEND";$body;$headerNames;$headerValues)
-
-      $err:=STOMP Read ($stomp;$command;$body;$headerNames;$headerValues)
-
-      $err:=STOMP Write ($stomp;"DISCONNECT")
-
-    End if 
-
-    $err:=STOMP Disconnect ($stomp)
-
-  End if 
-
-End if 
-```
-
-**Note**: Error codes are negative translations of ``APR ERROR VALUES``. ``-1`` means the context ID was invalid.
-
-``winsock`` error codes may be different across platforms.
+* Link ``Mswsock.lib`` for ``TransmitFile``
