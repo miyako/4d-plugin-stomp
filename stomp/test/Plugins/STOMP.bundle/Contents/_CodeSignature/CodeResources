@@ -8,7 +8,7 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			EGQZprsJsBd/K4jeiAz1+IczdSk=
+			a0iSWKLZNsA27H/d8UQeYShroZc=
 			</data>
 			<key>optional</key>
 			<true/>
@@ -16,6 +16,10 @@
 		<key>Resources/constants.xlf</key>
 		<data>
 		KRbhCa8f/kEY7lIAo6Qo1I+AED0=
+		</data>
+		<key>Resources/manifest.json</key>
+		<data>
+		WNr8Ixxg3fLz08NBnhGPPci7Wec=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -31,7 +35,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			krVUZbccChZ1t1B5rIKNW/pygl9jDgBrwjiVzFuQcCk=
+			jJIN7C5a3yWInb3BtJSyDQb1qRqVYIDRINa2nJjG9DQ=
 			</data>
 			<key>optional</key>
 			<true/>
@@ -41,6 +45,13 @@
 			<key>hash2</key>
 			<data>
 			IBN7E24gAHQ2ozeFpUNATrujNjU0F7Ts2Y+rTUnh2Hw=
+			</data>
+		</dict>
+		<key>Resources/manifest.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			x7wTpazF6v/fAK1bn4B0uT73R+yT86+kt65aV/RAUCY=
 			</data>
 		</dict>
 		<key>Windows/STOMP.4DX</key>
@@ -56,15 +67,6 @@
 			<data>
 			4OwU4ju0F6ARDi2IEWidxSIpdVnarljI4iXycvQXU9w=
 			</data>
-		</dict>
-		<key>manifest.json</key>
-		<dict>
-			<key>cdhash</key>
-			<data>
-			DHDLZ16gVgaELkZrymV9xAPTr9Y=
-			</data>
-			<key>requirement</key>
-			<string>identifier manifest and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = Y69CWUC25B</string>
 		</dict>
 	</dict>
 	<key>rules</key>
