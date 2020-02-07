@@ -1,5 +1,5 @@
 # 4d-plugin-stomp
-STOMP client ([libstomp](https://github.com/a3linux/libstomp) implementation)
+STOMP client based on ([libstomp](https://github.com/a3linux/libstomp).
 
 ### Platform
 
