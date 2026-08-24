@@ -263,6 +263,27 @@ jobs:
           curl -sL "https://codeload.github.com/open-source-parsers/jsoncpp/tar.gz/refs/tags/${JSONCPP_VERSION}" -o jsoncpp.tar.gz
           tar xzf jsoncpp.tar.gz
 
+          # jsoncpp's own CMakeLists.txt unconditionally sets, for Clang,
+          # -Werror=conversion (a group promotion covering every
+          # "conversion"-tagged diagnostic). Recent clang added a new
+          # sub-diagnostic under that same group, -Wimplicit-int-float-
+          # conversion, which jsoncpp's own json_value.cpp (InRange, a
+          # long-standing part of its real source, not our changes) now
+          # trips - a real compile error that has nothing to do with our
+          # architecture/version overrides. Passing -Wno-error=... via
+          # -DCMAKE_CXX_FLAGS on the cmake command line does NOT work here:
+          # confirmed locally that whatever we pass that way ends up
+          # positioned BEFORE jsoncpp's own SET(CMAKE_CXX_FLAGS
+          # "${CMAKE_CXX_FLAGS} ... -Werror=conversion ...") line, and
+          # clang resolves same-category diagnostic flags last-one-wins -
+          # their later, broader -Werror=conversion silently re-promotes it
+          # regardless of what we pass first. Appending our override
+          # directly after their SET() line in the actual file is the only
+          # placement that survives, confirmed with the exact flag order
+          # CMake produces either way.
+          sed -i.bak '/SET(CMAKE_CXX_FLAGS "\${CMAKE_CXX_FLAGS} -Wall -Wconversion -Wshadow -Werror=conversion -Werror=sign-compare")/a\    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=implicit-int-float-conversion")' \
+            "jsoncpp-${JSONCPP_VERSION}/CMakeLists.txt"
+
           # jsoncpp 1.8.4's own CMakeLists.txt declares
           # cmake_minimum_required(VERSION 3.1); current CMake has dropped
           # compatibility with anything below 3.5 and refuses to configure
