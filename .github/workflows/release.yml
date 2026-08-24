@@ -263,7 +263,13 @@ jobs:
           curl -sL "https://codeload.github.com/open-source-parsers/jsoncpp/tar.gz/refs/tags/${JSONCPP_VERSION}" -o jsoncpp.tar.gz
           tar xzf jsoncpp.tar.gz
 
+          # jsoncpp 1.8.4's own CMakeLists.txt declares
+          # cmake_minimum_required(VERSION 3.1); current CMake has dropped
+          # compatibility with anything below 3.5 and refuses to configure
+          # at all without this override - CMake's own error message on a
+          # real run names this exact flag as the fix.
           cmake -S "jsoncpp-${JSONCPP_VERSION}" -B jsoncpp-build \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="${MIN_VER}" \
             -DBUILD_SHARED_LIBS=OFF \
