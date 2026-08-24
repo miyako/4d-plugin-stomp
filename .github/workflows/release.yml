@@ -162,16 +162,20 @@ jobs:
           # APR 1.5.2's own autoconf checks (APR_CHECK_SIZEOF_EXTENDED in
           # build/apr_common.m4) compile-and-run tiny K&R-style C programs
           # (bare `main()`, calls to `exit()` with no #include) to measure
-          # sizeof(off_t)/size_t/etc. Confirmed on 2026-08-24: the Xcode
-          # 26.6 clang on this runner treats implicit-int and
-          # implicit-function-declaration as hard errors by default (not
-          # just warnings), so every one of those conftest programs fails to
-          # compile, AC_TRY_RUN silently records size 0 for each, and
-          # configure then fatally errors on "could not determine the size
-          # of off_t" once none of int/long/long long match. Passing
-          # -Wno-error for just these two warnings restores the old
-          # lenient-by-default behavior these 2015-era conftest programs
-          # were written against, without turning off other errors.
+          # sizeof(off_t)/size_t/etc. Confirmed on 2026-08-24 via a real CI
+          # run's config.log: the autoconf version buildconf regenerates
+          # against here (2.70+) auto-detects that this compiler supports
+          # -std=gnu23 and adopts it for every subsequent conftest -
+          # including APR's own. Under gnu23 specifically, a bare `main()`
+          # with no return type isn't a warning that got promoted to an
+          # error, it's invalid grammar with no legal parse at all - so
+          # -Wno-error=implicit-int (tried first, confirmed via config.log
+          # to have no effect here) can't fix it; only pinning CC to an
+          # explicit older standard (below C23) stops autoconf from
+          # selecting gnu23 in the first place. -Wno-error for
+          # implicit-function-declaration is kept alongside -std=gnu99
+          # since that one genuinely is a demotable warning even pre-C23,
+          # and this conftest also calls exit() with no #include.
           curl -sL "https://codeload.github.com/apache/apr/tar.gz/refs/tags/${APR_VERSION}" -o apr.tar.gz
           tar xzf apr.tar.gz
           cp -R "apr-${APR_VERSION}" apr-arm64
@@ -179,7 +183,7 @@ jobs:
 
           # Native arm64 build (runner itself is Apple Silicon).
           ( cd apr-arm64 && ./buildconf && \
-            CC="clang -arch arm64 -isysroot ${SDK} -mmacosx-version-min=${MIN_VER} -Wno-error=implicit-int -Wno-error=implicit-function-declaration" \
+            CC="clang -arch arm64 -isysroot ${SDK} -mmacosx-version-min=${MIN_VER} -std=gnu99 -Wno-error=implicit-int -Wno-error=implicit-function-declaration" \
             ./configure --disable-shared --enable-static \
               --prefix="$PWD/../out-arm64" \
             || { echo "===== apr-arm64/config.log ====="; cat config.log; exit 1; } && \
@@ -194,7 +198,7 @@ jobs:
           # wrong for this target this step will build clean but the
           # resulting library could misbehave at runtime, not at build time).
           ( cd apr-x86_64 && ./buildconf && \
-            CC="clang -arch x86_64 -isysroot ${SDK} -mmacosx-version-min=${MIN_VER} -Wno-error=implicit-int -Wno-error=implicit-function-declaration" \
+            CC="clang -arch x86_64 -isysroot ${SDK} -mmacosx-version-min=${MIN_VER} -std=gnu99 -Wno-error=implicit-int -Wno-error=implicit-function-declaration" \
             ./configure --host=x86_64-apple-darwin --disable-shared --enable-static \
               --prefix="$PWD/../out-x86_64" \
             || { echo "===== apr-x86_64/config.log ====="; cat config.log; exit 1; } && \
