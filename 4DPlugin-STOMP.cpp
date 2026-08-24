@@ -63,6 +63,7 @@ void stomp_context_remove(uint32_t i) {
     if(pos != stomp_contexts.end())
     {
         ctx = pos->second;
+        if(ctx->pool) apr_pool_destroy(ctx->pool);
         delete ctx;
         stomp_contexts.erase(pos);
     }
@@ -114,6 +115,8 @@ void OnExit()
     for(std::map<uint32_t, stomp_ctx*>::iterator i = stomp_contexts.begin(); i != stomp_contexts.end(); i++)
     {
         stomp_ctx *ctx = i->second;
+        stomp_disconnect(&ctx->connection);
+        if(ctx->pool) apr_pool_destroy(ctx->pool);
         delete ctx;
     }
     stomp_contexts.clear();
@@ -329,38 +332,41 @@ void STOMP_Write(PA_PluginParameters params) {
           OB GET PROPERTY NAMES + PA_ExecuteCommandByID is toxic
          */
 
-        CUTF8String json;
-        
-        ob_stringify(Param4_headerValues, &json);
-
-        using namespace std;
-        using namespace Json;
-        
-        Value root;
-        CharReaderBuilder builder;
-        string errors;
-        
-        CharReader *reader = builder.newCharReader();
-        bool parse = reader->parse((const char *)json.c_str(),
-                                   (const char *)json.c_str() + json.size(),
-                                   &root,
-                                   &errors);
-        delete reader;
-        
-        if(parse)
+        if(Param4_headerValues)
         {
-            for(Value::const_iterator it = root.begin() ; it != root.end() ; it++)
-            {
-                JSONCPP_STRING name = it.name();
+            CUTF8String json;
+            
+            ob_stringify(Param4_headerValues, &json);
 
-                if(it->isString())
+            using namespace std;
+            using namespace Json;
+            
+            Value root;
+            CharReaderBuilder builder;
+            string errors;
+            
+            CharReader *reader = builder.newCharReader();
+            bool parse = reader->parse((const char *)json.c_str(),
+                                       (const char *)json.c_str() + json.size(),
+                                       &root,
+                                       &errors);
+            delete reader;
+            
+            if(parse)
+            {
+                for(Value::const_iterator it = root.begin() ; it != root.end() ; it++)
                 {
-                    string value = it->asString();
-                    apr_hash_set(frame.headers,
-                                 name.c_str(),
-                                 APR_HASH_KEY_STRING,
-                                 value.c_str());
-                    withHeaders = true;
+                    JSONCPP_STRING name = it.name();
+
+                    if(it->isString())
+                    {
+                        string value = it->asString();
+                        apr_hash_set(frame.headers,
+                                     name.c_str(),
+                                     APR_HASH_KEY_STRING,
+                                     value.c_str());
+                        withHeaders = true;
+                    }
                 }
             }
         }
@@ -478,6 +484,7 @@ void STOMP_Connect(PA_PluginParameters params) {
             PA_ReturnLong(params, stomp_context_add(connection, pool));
         }else
         {
+            apr_pool_destroy(pool);
             PA_ReturnLong(params, -rc);
         }
     }else
