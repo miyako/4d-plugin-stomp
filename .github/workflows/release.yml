@@ -162,20 +162,27 @@ jobs:
           # APR 1.5.2's own autoconf checks (APR_CHECK_SIZEOF_EXTENDED in
           # build/apr_common.m4) compile-and-run tiny K&R-style C programs
           # (bare `main()`, calls to `exit()` with no #include) to measure
-          # sizeof(off_t)/size_t/etc. Confirmed on 2026-08-24 via a real CI
-          # run's config.log: the autoconf version buildconf regenerates
-          # against here (2.70+) auto-detects that this compiler supports
-          # -std=gnu23 and adopts it for every subsequent conftest -
-          # including APR's own. Under gnu23 specifically, a bare `main()`
-          # with no return type isn't a warning that got promoted to an
-          # error, it's invalid grammar with no legal parse at all - so
-          # -Wno-error=implicit-int (tried first, confirmed via config.log
-          # to have no effect here) can't fix it; only pinning CC to an
-          # explicit older standard (below C23) stops autoconf from
-          # selecting gnu23 in the first place. -Wno-error for
-          # implicit-function-declaration is kept alongside -std=gnu99
-          # since that one genuinely is a demotable warning even pre-C23,
-          # and this conftest also calls exit() with no #include.
+          # sizeof(off_t)/size_t/etc. Root cause chain, each step confirmed
+          # against a real CI run's config.log or a local reproduction
+          # (not guessed): autoconf 2.73 (installed fresh by `brew install
+          # autoconf` below) auto-detects the newest C edition the compiler
+          # accepts (23, then 11, then 99, then 89 - first match wins) and
+          # APPENDS whatever it finds to CC, rather than skipping detection
+          # just because CC already has a -std= of its own. Since it finds
+          # gnu23 first, and clang treats multiple -std= flags as
+          # last-one-wins, an explicit -std=gnu99 in CC alone gets silently
+          # overridden by autoconf's own appended -std=gnu23 - confirmed
+          # locally with a minimal configure.ac: CC="clang -std=gnu99"
+          # still gets bumped to gnu11 by AC_PROG_CC. Under gnu23, this
+          # conftest's bare `main()` is invalid grammar (not a demotable
+          # warning), which is what actually produced "could not determine
+          # the size of off_t". Pre-seeding autoconf's own cache variables
+          # for the two newer editions makes it skip straight to c99, where
+          # our explicit -std=gnu99 already suffices ("none needed") -
+          # confirmed locally that this exact combination stops the
+          # override. -Wno-error=implicit-function-declaration is kept
+          # since that one's still a real, separately-demotable warning
+          # under gnu99 (this conftest also calls exit() with no #include).
           curl -sL "https://codeload.github.com/apache/apr/tar.gz/refs/tags/${APR_VERSION}" -o apr.tar.gz
           tar xzf apr.tar.gz
           cp -R "apr-${APR_VERSION}" apr-arm64
@@ -183,6 +190,7 @@ jobs:
 
           # Native arm64 build (runner itself is Apple Silicon).
           ( cd apr-arm64 && ./buildconf && \
+            ac_cv_prog_cc_c23=no ac_cv_prog_cc_c11=no \
             CC="clang -arch arm64 -isysroot ${SDK} -mmacosx-version-min=${MIN_VER} -std=gnu99 -Wno-error=implicit-int -Wno-error=implicit-function-declaration" \
             ./configure --disable-shared --enable-static \
               --prefix="$PWD/../out-arm64" \
@@ -198,6 +206,7 @@ jobs:
           # wrong for this target this step will build clean but the
           # resulting library could misbehave at runtime, not at build time).
           ( cd apr-x86_64 && ./buildconf && \
+            ac_cv_prog_cc_c23=no ac_cv_prog_cc_c11=no \
             CC="clang -arch x86_64 -isysroot ${SDK} -mmacosx-version-min=${MIN_VER} -std=gnu99 -Wno-error=implicit-int -Wno-error=implicit-function-declaration" \
             ./configure --host=x86_64-apple-darwin --disable-shared --enable-static \
               --prefix="$PWD/../out-x86_64" \
