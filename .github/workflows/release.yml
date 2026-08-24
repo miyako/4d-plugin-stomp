@@ -185,6 +185,44 @@ jobs:
           # under gnu99 (this conftest also calls exit() with no #include).
           curl -sL "https://codeload.github.com/apache/apr/tar.gz/refs/tags/${APR_VERSION}" -o apr.tar.gz
           tar xzf apr.tar.gz
+
+          # buildconf runs build/gen-build.py to generate build-outputs.mk,
+          # which the real make build then hard-requires (Makefile:45
+          # includes it) - without this, make fails immediately with "No
+          # rule to make target ... build-outputs.mk". gen-build.py is
+          # Python-2-only (import ConfigParser, string.join/string.split,
+          # dict.has_key, and three places that mutate a dict while
+          # iterating its own .keys()/.values() view, which raises
+          # RuntimeError under Python 3 even after the import is fixed).
+          # Confirmed locally: patching all of these is what it takes for
+          # gen-build.py to actually complete and emit a real,
+          # header-dependency-populated build-outputs.mk under Python 3 -
+          # fixing only the import (the first error you hit) still fails
+          # three more times in sequence on the later constructs.
+          python3 - "apr-${APR_VERSION}/build/gen-build.py" << 'PYEOF'
+          import re, sys
+          path = sys.argv[1]
+          with open(path) as f:
+              src = f.read()
+          src = src.replace('import ConfigParser', 'import configparser as ConfigParser')
+          src = src.replace(
+              "string.join(headers, ' $(top_srcdir)/')",
+              "' $(top_srcdir)/'.join(headers)"
+          )
+          src = re.sub(r"string\.join\(([^,()]+(?:\([^()]*\))?[^,()]*)\)", r"' '.join(\1)", src)
+          src = re.sub(r"string\.split\(([^()]+(?:\([^()]*\))?[^()]*)\)", r"(\1).split()", src)
+          src = re.sub(r"(\w+)\.has_key\(([^()]+)\)", r"\2 in \1", src)
+          src = src.replace("keys = alldirs.keys()", "keys = list(alldirs.keys())")
+          src = src.replace(
+              "for hdr in deps.keys():\n      deps.update(h_deps.get(hdr, {}))",
+              "for hdr in list(deps.keys()):\n      deps.update(h_deps.get(hdr, {}))"
+          )
+          src = src.replace("vals = deps.values()", "vals = list(deps.values())")
+          src = src.replace("for dep in deps.keys():", "for dep in list(deps.keys()):")
+          with open(path, 'w') as f:
+              f.write(src)
+          PYEOF
+
           cp -R "apr-${APR_VERSION}" apr-arm64
           cp -R "apr-${APR_VERSION}" apr-x86_64
 
