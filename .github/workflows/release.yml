@@ -3,8 +3,11 @@
 # .bundle, codesigns + notarizes the mac binary, and publishes a GitHub
 # Release with the zip and dmg attached.
 #
-# Trigger: push a tag matching v*.*.* (either by hand, or via bump-version.yml).
-# You can also run it manually against an existing tag with workflow_dispatch.
+# NOTE: /test/ path is intentional and static for this project.
+# PORTABILITY: Edit only PRODUCT_NAME below. Everything else derives from it.
+# Canonical layout enforced:
+#   test/Plugins/<Product>.bundle/Contents/MacOS/<Product>
+#   test/Plugins/<Product>.bundle/Contents/Windows64/<Product>.4DX
 
 name: Build & Release
 
@@ -22,12 +25,12 @@ permissions:
   contents: write
 
 env:
-  # ---- edit these per-project, everything else is generic ----
+  # ---- only this needs editing per-project ----
   PRODUCT_NAME: STOMP
-  XCODE_PROJECT: STOMP.xcodeproj
-  VCX_SOLUTION: STOMP.sln
-  MACOS_DEPLOYMENT_TARGET: '10.13'
-  # --------------------------------------------------------------
+  MACOS_DEPLOYMENT_TARGET: '11.0'
+  # static base for this project (intentional)
+  BASE_DIR: test
+  # ---------------------------------------------
 
 concurrency:
   group: release-${{ github.ref }}
@@ -59,30 +62,57 @@ jobs:
       - name: setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      # GitHub-hosted windows-latest ships VS2022 (v143 toolset) but not the
-      # legacy v140 toolset the project is pinned to, so we override it on
-      # the command line rather than requiring an extra VS component install.
-      #
-      # The project also hardcodes WindowsTargetPlatformVersion=8.1 in
-      # TZ.vcxproj (<PropertyGroup Label="Globals">), and the Windows 8.1 SDK
-      # is no longer installed on current windows-latest images, which fails
-      # with MSB8036 ("The Windows SDK version 8.1 was not found"). Same class
-      # of fix as the toolset override above: override it on the command line
-      # rather than editing the vcxproj (which applies to all 4
-      # Debug/Release x Win32/x64 configurations, not just the one this job
-      # builds). "10.0" lets MSBuild resolve to whatever full 10.0.xxxxx.x SDK
-      # is actually installed on the runner, rather than pinning an exact
-      # build number that may not match the image.
+      - name: clean stale outputs
+        shell: pwsh
+        run: |
+          $product = "${{ env.PRODUCT_NAME }}"
+          $base = "${{ env.BASE_DIR }}"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$base/Plugins/$product.bundle"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$base/plugins"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$base/Plugins/Default"
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "Objs"
+
       - name: build x64
         shell: cmd
-        run: msbuild "${{ env.VCX_SOLUTION }}" /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0 /m
+        run: |
+          msbuild "%PRODUCT_NAME%.sln" /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0 /m
+
+      - name: normalize windows output to canonical case
+        shell: pwsh
+        run: |
+          $product = "${{ env.PRODUCT_NAME }}"
+          $base = "${{ env.BASE_DIR }}"
+          $canonicalDir = "$base/Plugins/$product.bundle/Contents/Windows64"
+          New-Item -ItemType Directory -Force -Path $canonicalDir | Out-Null
+
+          $found = Get-ChildItem -Recurse -Filter "$product.4DX" -ErrorAction SilentlyContinue | Where-Object { $_.FullName -like "*Plugins*" } | Select-Object -First 1
+          if (-not $found) {
+            Get-ChildItem -Recurse -Filter "*.4DX" | ForEach-Object { Write-Host $_.FullName }
+            Write-Error "Windows binary $product.4DX not found after build"
+            exit 1
+          }
+          Write-Host "Found at: $($found.FullName)"
+
+          $destination = Join-Path $canonicalDir "$product.4DX"
+          $sourceResolved = (Resolve-Path $found.FullName).Path
+          $destResolved = (Resolve-Path $destination -ErrorAction SilentlyContinue).Path
+
+          if ($destResolved -and ($sourceResolved -ieq $destResolved)) {
+            # Windows is case-insensitive: MSBuild's OutDir (lowercase, per
+            # the .vcxproj) and this step's canonical path already point at
+            # the identical physical file. Copy-Item correctly refuses to
+            # "overwrite" a file with itself - there's nothing left to do.
+            Write-Host "Already at canonical location (case-insensitive match) - skipping copy."
+          } else {
+            Copy-Item $found.FullName $destination -Force
+          }
+          Get-ChildItem $canonicalDir
 
       - name: upload windows binaries
         uses: actions/upload-artifact@v4
         with:
           name: windows-binaries
-          path: |
-            test/Plugins/${{ env.PRODUCT_NAME }}.bundle/Contents/Windows64/${{ env.PRODUCT_NAME }}.4DX
+          path: ${{ env.BASE_DIR }}/Plugins/${{ env.PRODUCT_NAME }}.bundle/Contents/Windows64/${{ env.PRODUCT_NAME }}.4DX
           if-no-files-found: error
 
   build-macos:
@@ -133,232 +163,89 @@ jobs:
             --password "$APP_PASSWORD" \
             --keychain "$KEYCHAIN_PATH"
 
-      # a/libapr-1.a and a/libjsoncpp.a as checked into the repo are old fat
-      # archives with only i386+x86_64 slices (confirmed by inspecting the
-      # actual binaries: `lipo -info` / `file` show no arm64). Once this repo
-      # started building as an arm64+x86_64 universal binary, the link step
-      # can't find arm64 symbols from either library and fails. Rebuilding
-      # both from source for arm64+x86_64 replaces them with real universal
-      # archives, matching the exact versions already vendored (APR 1.5.2,
-      # jsoncpp 1.8.4, per their own version headers under include/) so the
-      # existing headers stay valid against the new binaries.
-      - name: rebuild libapr-1.a (arm64 + x86_64 universal)
-        run: |
-          set -euo pipefail
-          APR_VERSION=1.5.2
-          SDK=$(xcrun --sdk macosx --show-sdk-path)
-          MIN_VER="${{ env.MACOS_DEPLOYMENT_TARGET }}"
-
-          # APR's own build/buildcheck.sh (run by ./buildconf) hard-requires a
-          # `python` binary in PATH and will abort with "python not found" if
-          # only `python3` is present, which is the case on current macOS
-          # runners. This has not been run against a real runner - if a newer
-          # buildcheck.sh quirk surfaces here, this is the first place to look.
-          brew install autoconf automake libtool pkg-config
-          if ! command -v python >/dev/null 2>&1; then
-            sudo ln -sf "$(command -v python3)" /usr/local/bin/python
-          fi
-
-          # APR 1.5.2's own autoconf checks (APR_CHECK_SIZEOF_EXTENDED in
-          # build/apr_common.m4) compile-and-run tiny K&R-style C programs
-          # (bare `main()`, calls to `exit()` with no #include) to measure
-          # sizeof(off_t)/size_t/etc. Root cause chain, each step confirmed
-          # against a real CI run's config.log or a local reproduction
-          # (not guessed): autoconf 2.73 (installed fresh by `brew install
-          # autoconf` below) auto-detects the newest C edition the compiler
-          # accepts (23, then 11, then 99, then 89 - first match wins) and
-          # APPENDS whatever it finds to CC, rather than skipping detection
-          # just because CC already has a -std= of its own. Since it finds
-          # gnu23 first, and clang treats multiple -std= flags as
-          # last-one-wins, an explicit -std=gnu99 in CC alone gets silently
-          # overridden by autoconf's own appended -std=gnu23 - confirmed
-          # locally with a minimal configure.ac: CC="clang -std=gnu99"
-          # still gets bumped to gnu11 by AC_PROG_CC. Under gnu23, this
-          # conftest's bare `main()` is invalid grammar (not a demotable
-          # warning), which is what actually produced "could not determine
-          # the size of off_t". Pre-seeding autoconf's own cache variables
-          # for the two newer editions makes it skip straight to c99, where
-          # our explicit -std=gnu99 already suffices ("none needed") -
-          # confirmed locally that this exact combination stops the
-          # override. -Wno-error=implicit-function-declaration is kept
-          # since that one's still a real, separately-demotable warning
-          # under gnu99 (this conftest also calls exit() with no #include).
-          curl -sL "https://codeload.github.com/apache/apr/tar.gz/refs/tags/${APR_VERSION}" -o apr.tar.gz
-          tar xzf apr.tar.gz
-
-          # buildconf runs build/gen-build.py to generate build-outputs.mk,
-          # which the real make build then hard-requires (Makefile:45
-          # includes it) - without this, make fails immediately with "No
-          # rule to make target ... build-outputs.mk". gen-build.py is
-          # Python-2-only (import ConfigParser, string.join/string.split,
-          # dict.has_key, and three places that mutate a dict while
-          # iterating its own .keys()/.values() view, which raises
-          # RuntimeError under Python 3 even after the import is fixed).
-          # Confirmed locally: patching all of these is what it takes for
-          # gen-build.py to actually complete and emit a real,
-          # header-dependency-populated build-outputs.mk under Python 3 -
-          # fixing only the import (the first error you hit) still fails
-          # three more times in sequence on the later constructs.
-          python3 - "apr-${APR_VERSION}/build/gen-build.py" << 'PYEOF'
-          import re, sys
-          path = sys.argv[1]
-          with open(path) as f:
-              src = f.read()
-          src = src.replace('import ConfigParser', 'import configparser as ConfigParser')
-          src = src.replace(
-              "string.join(headers, ' $(top_srcdir)/')",
-              "' $(top_srcdir)/'.join(headers)"
-          )
-          src = re.sub(r"string\.join\(([^,()]+(?:\([^()]*\))?[^,()]*)\)", r"' '.join(\1)", src)
-          src = re.sub(r"string\.split\(([^()]+(?:\([^()]*\))?[^()]*)\)", r"(\1).split()", src)
-          src = re.sub(r"(\w+)\.has_key\(([^()]+)\)", r"\2 in \1", src)
-          src = src.replace("keys = alldirs.keys()", "keys = list(alldirs.keys())")
-          src = src.replace(
-              "for hdr in deps.keys():\n      deps.update(h_deps.get(hdr, {}))",
-              "for hdr in list(deps.keys()):\n      deps.update(h_deps.get(hdr, {}))"
-          )
-          src = src.replace("vals = deps.values()", "vals = list(deps.values())")
-          src = src.replace("for dep in deps.keys():", "for dep in list(deps.keys()):")
-          with open(path, 'w') as f:
-              f.write(src)
-          PYEOF
-
-          cp -R "apr-${APR_VERSION}" apr-arm64
-          cp -R "apr-${APR_VERSION}" apr-x86_64
-
-          # Native arm64 build (runner itself is Apple Silicon).
-          ( cd apr-arm64 && ./buildconf && \
-            ac_cv_prog_cc_c23=no ac_cv_prog_cc_c11=no \
-            CC="clang -arch arm64 -isysroot ${SDK} -mmacosx-version-min=${MIN_VER} -std=gnu99 -Wno-error=implicit-int -Wno-error=implicit-function-declaration" \
-            ./configure --disable-shared --enable-static \
-              --prefix="$PWD/../out-arm64" \
-            || { echo "===== apr-arm64/config.log ====="; cat config.log; exit 1; } && \
-            make -j"$(sysctl -n hw.ncpu)" && make install )
-
-          # x86_64 build. --host tells autoconf this is a cross build so its
-          # configure-time checks don't try to execute x86_64 test binaries
-          # on the arm64 host - this avoids depending on Rosetta being
-          # installed on the runner, but is the least-tested part of this
-          # recipe (APR's AC_TRY_RUN-based checks fall back to their
-          # documented cross-compiling defaults; if any of those defaults are
-          # wrong for this target this step will build clean but the
-          # resulting library could misbehave at runtime, not at build time).
-          ( cd apr-x86_64 && ./buildconf && \
-            ac_cv_prog_cc_c23=no ac_cv_prog_cc_c11=no \
-            CC="clang -arch x86_64 -isysroot ${SDK} -mmacosx-version-min=${MIN_VER} -std=gnu99 -Wno-error=implicit-int -Wno-error=implicit-function-declaration" \
-            ./configure --host=x86_64-apple-darwin --disable-shared --enable-static \
-              --prefix="$PWD/../out-x86_64" \
-            || { echo "===== apr-x86_64/config.log ====="; cat config.log; exit 1; } && \
-            make -j"$(sysctl -n hw.ncpu)" && make install )
-
-          lipo -create out-arm64/lib/libapr-1.a out-x86_64/lib/libapr-1.a -output a/libapr-1.a
-          lipo -info a/libapr-1.a
-
-      - name: rebuild libjsoncpp.a (arm64 + x86_64 universal)
-        run: |
-          set -euo pipefail
-          JSONCPP_VERSION=1.8.4
-          MIN_VER="${{ env.MACOS_DEPLOYMENT_TARGET }}"
-
-          curl -sL "https://codeload.github.com/open-source-parsers/jsoncpp/tar.gz/refs/tags/${JSONCPP_VERSION}" -o jsoncpp.tar.gz
-          tar xzf jsoncpp.tar.gz
-
-          # jsoncpp's own CMakeLists.txt unconditionally sets, for Clang,
-          # -Werror=conversion (a group promotion covering every
-          # "conversion"-tagged diagnostic). Recent clang added a new
-          # sub-diagnostic under that same group, -Wimplicit-int-float-
-          # conversion, which jsoncpp's own json_value.cpp (InRange, a
-          # long-standing part of its real source, not our changes) now
-          # trips - a real compile error that has nothing to do with our
-          # architecture/version overrides. Passing -Wno-error=... via
-          # -DCMAKE_CXX_FLAGS on the cmake command line does NOT work here:
-          # confirmed locally that whatever we pass that way ends up
-          # positioned BEFORE jsoncpp's own SET(CMAKE_CXX_FLAGS
-          # "${CMAKE_CXX_FLAGS} ... -Werror=conversion ...") line, and
-          # clang resolves same-category diagnostic flags last-one-wins -
-          # their later, broader -Werror=conversion silently re-promotes it
-          # regardless of what we pass first. Appending our override
-          # directly after their SET() line in the actual file is the only
-          # placement that survives, confirmed with the exact flag order
-          # CMake produces either way. Using python3 (not sed) for this:
-          # macOS ships BSD sed, whose multi-line "a" append syntax differs
-          # from GNU sed's - confirmed via a real run that the GNU-style
-          # single-line form fails outright on the runner ("extra
-          # characters after \"), rather than risk a second sed dialect
-          # difference, python3 is already relied on elsewhere in this job.
-          python3 - "jsoncpp-${JSONCPP_VERSION}/CMakeLists.txt" << 'PYEOF'
-          import sys
-          path = sys.argv[1]
-          anchor = 'SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wconversion -Wshadow -Werror=conversion -Werror=sign-compare")'
-          addition = '    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=implicit-int-float-conversion")'
-          with open(path) as f:
-              src = f.read()
-          if anchor not in src:
-              print("anchor line not found in " + path)
-              sys.exit(1)
-          src = src.replace(anchor, anchor + '\n' + addition)
-          with open(path, 'w') as f:
-              f.write(src)
-          PYEOF
-
-          # jsoncpp 1.8.4's own CMakeLists.txt declares
-          # cmake_minimum_required(VERSION 3.1); current CMake has dropped
-          # compatibility with anything below 3.5 and refuses to configure
-          # at all without this override - CMake's own error message on a
-          # real run names this exact flag as the fix.
-          cmake -S "jsoncpp-${JSONCPP_VERSION}" -B jsoncpp-build \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET="${MIN_VER}" \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DBUILD_STATIC_LIBS=ON \
-            -DJSONCPP_WITH_TESTS=OFF \
-            -DJSONCPP_WITH_POST_BUILD_UNITTEST=OFF \
-            -DJSONCPP_WITH_CMAKE_PACKAGE=OFF
-          cmake --build jsoncpp-build --config Release
-
-          # Locate the built archive rather than assuming its path, since
-          # that's determined by jsoncpp's own CMakeLists, not by us.
-          BUILT_LIB=$(find jsoncpp-build -name 'libjsoncpp.a' | head -1)
-          if [ -z "$BUILT_LIB" ]; then
-            echo "libjsoncpp.a not found under jsoncpp-build:"
-            find jsoncpp-build -maxdepth 4
-            exit 1
-          fi
-          cp "$BUILT_LIB" a/libjsoncpp.a
-          lipo -info a/libjsoncpp.a
-
       - name: build macOS plugin (universal)
         run: |
-          xcodebuild -project "${{ env.XCODE_PROJECT }}" \
-            -target "${{ env.PRODUCT_NAME }}" \
+          set -euo pipefail
+          PRODUCT="${{ env.PRODUCT_NAME }}"
+          BASE="${{ env.BASE_DIR }}"
+          XCODE_PROJECT="${PRODUCT}.xcodeproj"
+          XCODE_TARGET="${PRODUCT}"
+          PLUGINS_DIR="${BASE}/Plugins"
+
+          echo "Cleaning stale outputs to avoid /Default/ vs / bug"
+          rm -rf "${PLUGINS_DIR}/${PRODUCT}.bundle"
+          rm -rf "${PLUGINS_DIR}/Default"
+          rm -rf "${BASE}/plugins"
+          rm -rf "${PLUGINS_DIR}/${PRODUCT}.build"
+
+          echo "Building $XCODE_PROJECT target $XCODE_TARGET"
+          xcodebuild -project "$XCODE_PROJECT" \
+            -target "$XCODE_TARGET" \
             -configuration Default \
             ARCHS="arm64 x86_64" \
             ONLY_ACTIVE_ARCH=NO \
             MACOSX_DEPLOYMENT_TARGET="${{ env.MACOS_DEPLOYMENT_TARGET }}" \
             CODE_SIGNING_ALLOWED=NO \
+            CONFIGURATION_BUILD_DIR="$PWD/$PLUGINS_DIR" \
             build
+
+          echo "Built:"
+          ls -R "$PLUGINS_DIR"
 
       - name: verify universal binary
         run: |
           set -euo pipefail
-          BIN="test/Plugins/Default/${{ env.PRODUCT_NAME }}.bundle/Contents/MacOS/${{ env.PRODUCT_NAME }}"
+          PRODUCT="${{ env.PRODUCT_NAME }}"
+          BASE="${{ env.BASE_DIR }}"
+          BIN="${BASE}/Plugins/${PRODUCT}.bundle/Contents/MacOS/${PRODUCT}"
+
+          if [ ! -f "$BIN" ]; then
+            echo "::error::Expected binary not found at $BIN"
+            ls -R "$BASE"
+            exit 1
+          fi
+
+          echo "Timestamp check (must be recent):"
+          ls -lT "$BIN" || ls -l --time-style=full "$BIN"
+
           lipo -info "$BIN"
-          lipo -info "$BIN" | grep -q "arm64" && lipo -info "$BIN" | grep -q "x86_64"
+          lipo -info "$BIN" | grep -q "arm64"
+          lipo -info "$BIN" | grep -q "x86_64"
 
       - name: merge Windows binaries into the bundle
         run: |
           set -euo pipefail
-          BUNDLE="test/Plugins/Default/${{ env.PRODUCT_NAME }}.bundle"
+          PRODUCT="${{ env.PRODUCT_NAME }}"
+          BASE="${{ env.BASE_DIR }}"
+          BUNDLE="${BASE}/Plugins/${PRODUCT}.bundle"
+
           mkdir -p "$BUNDLE/Contents/Windows64"
-          cp "winbuild/${{ env.PRODUCT_NAME }}.4DX" "$BUNDLE/Contents/Windows64/${{ env.PRODUCT_NAME }}.4DX"
+
+          echo "winbuild contents:"
+          ls -R winbuild || true
+
+          SRC=$(find winbuild -name "${PRODUCT}.4DX" -type f | head -1)
+          if [ -z "$SRC" ]; then
+            echo "::error::Windows binary ${PRODUCT}.4DX not found in winbuild/"
+            exit 1
+          fi
+
+          echo "Copying $SRC -> $BUNDLE/Contents/Windows64/${PRODUCT}.4DX"
+          cp "$SRC" "$BUNDLE/Contents/Windows64/${PRODUCT}.4DX"
+
           echo "BUNDLE_PATH=$BUNDLE" >> "$GITHUB_ENV"
+          ls -R "$BUNDLE/Contents"
 
       - name: codesign
         run: |
           set -euo pipefail
           IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
             | grep "Developer ID Application" | head -1 | sed -E 's/.*"(.*)".*/\1/')
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::No Developer ID identity found"
+            security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+            exit 1
+          fi
           echo "Signing with: $IDENTITY"
           codesign --verbose --deep --timestamp --force --options=runtime \
             --sign "$IDENTITY" "$BUNDLE_PATH"
@@ -367,15 +254,16 @@ jobs:
       - name: package, notarize & staple
         run: |
           set -euo pipefail
+          PRODUCT="${{ env.PRODUCT_NAME }}"
           VERSION="${{ needs.version.outputs.version }}"
-          ZIP_PATH="${{ env.PRODUCT_NAME }}-${VERSION}.zip"
-          DMG_PATH="${{ env.PRODUCT_NAME }}-${VERSION}.dmg"
+          ZIP_PATH="${PRODUCT}-${VERSION}.zip"
+          DMG_PATH="${PRODUCT}-${VERSION}.dmg"
 
-          # zip: cross-platform bundle (win + mac binaries together), what most users grab
+          echo "Creating $ZIP_PATH"
           ditto -c -k --keepParent "$BUNDLE_PATH" "$ZIP_PATH"
 
-          # dmg: mac-friendly, and the only format Apple lets us staple a ticket to
-          hdiutil create -format UDBZ -volname "${{ env.PRODUCT_NAME }}" -srcfolder "$BUNDLE_PATH" "$DMG_PATH"
+          echo "Creating $DMG_PATH"
+          hdiutil create -format UDBZ -volname "$PRODUCT" -srcfolder "$BUNDLE_PATH" "$DMG_PATH"
 
           xcrun notarytool submit "$ZIP_PATH" --keychain-profile "notarytool-profile" --keychain "$KEYCHAIN_PATH" --wait
           xcrun notarytool submit "$DMG_PATH" --keychain-profile "notarytool-profile" --keychain "$KEYCHAIN_PATH" --wait
@@ -383,6 +271,7 @@ jobs:
 
           echo "ZIP_PATH=$ZIP_PATH" >> "$GITHUB_ENV"
           echo "DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
+          ls -lh "$ZIP_PATH" "$DMG_PATH"
 
       - name: create GitHub Release
         uses: softprops/action-gh-release@v2
