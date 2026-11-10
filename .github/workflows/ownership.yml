@@ -1,0 +1,22 @@
+name: Ownership regressions
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  ownership:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Run actual-source ownership regressions
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 tests/test_ownership.py -v

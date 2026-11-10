@@ -5,6 +5,9 @@
 
 # 4d-plugin-stomp
 
+Native string ownership contracts, audit scope, and safe no-network regression
+instructions are documented in [tests/ownership.md](tests/ownership.md).
+
 The STOMP plugin lets a 4D method talk directly to a [STOMP](https://stomp.github.io/) message broker (ActiveMQ, RabbitMQ's STOMP adapter, etc.) over a plain TCP socket — connecting, sending frames, and reading frames back — without going through any external process. Under the hood it drives a vendored STOMP client library on top of Apache Portable Runtime (APR) sockets; from 4D you only ever see connection IDs, text, and (depending on which command family you use) either an object or a pair of parallel arrays for frame headers.
 
 | Command | Returns | Purpose |

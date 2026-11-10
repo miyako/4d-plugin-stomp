@@ -327,6 +327,8 @@ void STOMP_Write(PA_PluginParameters params) {
         frame.headers = apr_hash_make(ctx->pool);
         
         bool withHeaders = false;
+        // APR borrows these buffers until the synchronous write returns.
+        std::vector<std::pair<std::string, std::string>> headerStorage;
         
         /*
           OB GET PROPERTY NAMES + PA_ExecuteCommandByID is toxic
@@ -354,6 +356,7 @@ void STOMP_Write(PA_PluginParameters params) {
             
             if(parse)
             {
+                headerStorage.reserve(root.size());
                 for(Value::const_iterator it = root.begin() ; it != root.end() ; it++)
                 {
                     JSONCPP_STRING name = it.name();
@@ -361,10 +364,11 @@ void STOMP_Write(PA_PluginParameters params) {
                     if(it->isString())
                     {
                         string value = it->asString();
+                        headerStorage.emplace_back(name, value);
                         apr_hash_set(frame.headers,
-                                     name.c_str(),
+                                     headerStorage.back().first.c_str(),
                                      APR_HASH_KEY_STRING,
-                                     value.c_str());
+                                     headerStorage.back().second.c_str());
                         withHeaders = true;
                     }
                 }
@@ -428,9 +432,12 @@ void _o_STOMP_Write(PA_PluginParameters params) {
         frame.headers = apr_hash_make(ctx->pool);
         
         bool withHeaders = false;
+        // Reserve before insertion so APR's borrowed pointers remain stable.
+        std::vector<std::pair<CUTF8String, CUTF8String>> headerStorage;
         
         if(Param4_headerNames.getSize() == Param5_headerValues.getSize())
         {
+            headerStorage.reserve(Param4_headerNames.getSize());
             CUTF8String headerName, headerValue;
             for(unsigned int i = 0; i < Param4_headerNames.getSize(); ++i)
             {
@@ -438,7 +445,9 @@ void _o_STOMP_Write(PA_PluginParameters params) {
                 Param5_headerValues.copyUTF8StringAtIndex(&headerValue, i);
                 if(headerName.length())
                 {
-                    apr_hash_set(frame.headers, headerName.c_str(), APR_HASH_KEY_STRING, headerValue.c_str());
+                    headerStorage.emplace_back(headerName, headerValue);
+                    apr_hash_set(frame.headers, headerStorage.back().first.c_str(),
+                                 APR_HASH_KEY_STRING, headerStorage.back().second.c_str());
                     withHeaders = true;
                 }
             }
