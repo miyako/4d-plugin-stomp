@@ -73,6 +73,11 @@ are imported from another plugin.
 HEAD and the index must still match selected source; all nongenerated worktree
 bytes are hashed independently of Git's stat caches, filters and hidden flags.
 Nothing is reset to pretend a built checkout is clean.
+On Windows only, regular worktree `100644`/`100755` modes are compatible because
+NTFS does not preserve POSIX executable bits. Raw hashes and selected index modes
+remain exact; symlinks, reparse points and nonregular files are never normalized.
+Build supplies process-scoped `core.autocrlf=false` through `GIT_CONFIG_COUNT`
+before every checkout, preserving raw committed bytes without global Git changes.
 
 ## Publication and recovery
 

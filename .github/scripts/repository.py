@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import stat
 import subprocess
+import sys
 
 
 def run(*args, input=None, env=None):
@@ -67,6 +68,15 @@ def is_link(path):
     )
 
 
+def worktree_matches(actual, expected):
+    regular_modes = {"100644", "100755"}
+    return actual[1] == expected[1] and (
+        actual[0] == expected[0]
+        or (sys.platform == "win32"
+            and actual[0] in regular_modes and expected[0] in regular_modes)
+    )
+
+
 def verify_checkout(sha, *, generated=lambda path: False, assets=(), final=False):
     selected_sha(sha)
     selected = entries(run("git", "ls-tree", "-r", "-z", sha, "--"))
@@ -80,7 +90,7 @@ def verify_checkout(sha, *, generated=lambda path: False, assets=(), final=False
         if final and generated(path):
             continue
         try:
-            if actual_blob(path) != selected[path]:
+            if not worktree_matches(actual_blob(path), selected[path]):
                 raise ValueError(f"Working source/config differs from selected SHA: {path}")
         except OSError as error:
             raise ValueError(f"Working source/config missing or unreadable: {path}") from error

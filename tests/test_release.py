@@ -10,10 +10,11 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from helper_support import Fixture, GitFixture, source
+from helper_support import Fixture, GitFixture, ROOT, source
 import native
 import release
 import repository
+import yaml
 
 
 TAG, SHA = "v3.2.1", "a" * 40
@@ -263,6 +264,184 @@ class PublicationCLITests(GitFixture):
 
     def calls(self):
         return [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
+
+    def windows_checkout(self):
+        executable = (*map(str, source.SOURCE_PATHS), "native.cpp", ".github/hooks/pre-push")
+        for name in executable:
+            (self.local / name).chmod(0o755)
+        self.git("add", "--", *executable)
+        self.git("commit", "--quiet", "-m", "committed executable Windows checkout fixture")
+        self.sha = self.git("rev-parse", "HEAD")
+        self.env["GITHUB_SHA"] = self.sha
+        self.git("config", "core.filemode", "false")
+        for name in executable:
+            (self.local / name).chmod(0o644)
+        self.assertEqual(self.git("status", "--porcelain"), "")
+        for name in executable:
+            self.assertTrue(self.git("ls-files", "--stage", "--", name).startswith("100755 "))
+        self.bootstrap = self.root / "windows-cli.py"
+        self.bootstrap.write_text('''
+import os
+from pathlib import Path
+import runpy
+import sys
+from types import SimpleNamespace
+sys.path.insert(0, str(Path(".github/scripts").resolve()))
+import repository
+repository.sys = SimpleNamespace(platform=os.environ["TEST_PLATFORM"])
+if os.environ.get("TEST_REPARSE"):
+    original = Path.lstat
+    def lstat(path, *args, **kwargs):
+        result = original(path, *args, **kwargs)
+        if path == Path("native.cpp"):
+            return SimpleNamespace(st_mode=result.st_mode, st_file_attributes=0x400)
+        return result
+    Path.lstat = lstat
+sys.argv = [".github/scripts/release.py", *sys.argv[1:]]
+runpy.run_path(sys.argv[0], run_name="__main__")
+''')
+
+    def windows_preflight(self, *, platform="win32", reparse=False):
+        return subprocess.run(
+            [sys.executable, str(self.bootstrap), "preflight", "--sha", self.sha],
+            cwd=self.local, env={**self.env, "TEST_PLATFORM": platform,
+                                 "TEST_REPARSE": "1" if reparse else "", "RUNNER_OS": "Windows"},
+            capture_output=True, text=True, timeout=60,
+        )
+
+    def test_windows_actual_cli_committed_executable_bytes_accept_nonexecuting_regular_worktree(self):
+        self.windows_checkout()
+        result = self.windows_preflight()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.output.read_text(), f"version={self.version}\ntag={self.tag}\n")
+        self.assertEqual(len(self.calls()), 2)
+        for name in (*map(str, source.SOURCE_PATHS), "native.cpp", ".github/hooks/pre-push"):
+            self.assertFalse((self.local / name).stat().st_mode & 0o111)
+            self.assertTrue(self.git("ls-files", "--stage", "--", name).startswith("100755 "))
+        self.assertEqual(self.git("status", "--porcelain"), "")
+
+    def test_windows_mode_compatibility_is_not_enabled_by_runner_environment_on_other_platforms(self):
+        self.windows_checkout()
+        for platform in ("darwin", "linux"):
+            result = self.windows_preflight(platform=platform)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Working source/config differs", result.stderr)
+            self.assertEqual(self.calls(), [])
+
+    def test_windows_actual_cli_raw_staged_reversed_index_mode_and_hidden_flags_fail_before_api(self):
+        self.windows_checkout()
+        target = self.local / "native.cpp"
+        raw = target.read_bytes()
+        for kind in ("raw", "staged", "reversed", "indexmode",
+                     "assume-unchanged", "skip-worktree"):
+            with self.subTest(kind=kind):
+                if kind == "indexmode":
+                    self.git("update-index", "--chmod=-x", "--", "native.cpp")
+                elif kind in ("assume-unchanged", "skip-worktree"):
+                    self.git("update-index", "--" + kind, "--", "native.cpp")
+                else:
+                    target.write_bytes(raw + b" altered")
+                    if kind in ("staged", "reversed"):
+                        self.git("add", "--", "native.cpp")
+                    if kind == "reversed":
+                        target.write_bytes(raw)
+                result = self.windows_preflight()
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertEqual(self.calls(), [])
+                if kind in ("assume-unchanged", "skip-worktree"):
+                    self.git("update-index", "--no-" + kind, "--", "native.cpp")
+                target.write_bytes(raw)
+                self.git("add", "--", "native.cpp")
+                self.git("update-index", "--chmod=+x", "--", "native.cpp")
+        result = self.windows_preflight()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_windows_actual_cli_never_normalizes_symlink_reparse_or_directory_before_api(self):
+        self.windows_checkout()
+        target = self.local / "native.cpp"
+        raw = target.read_bytes()
+        outside = self.root / "same-bytes.cpp"
+        outside.write_bytes(raw)
+        target.unlink()
+        target.symlink_to(outside)
+        self.assertNotEqual(self.windows_preflight().returncode, 0)
+        self.assertEqual(self.calls(), [])
+        target.unlink()
+        target.mkdir()
+        self.assertNotEqual(self.windows_preflight().returncode, 0)
+        self.assertEqual(self.calls(), [])
+        target.rmdir()
+        target.write_bytes(raw)
+        result = self.windows_preflight(reparse=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("reparse", result.stderr)
+        self.assertEqual(self.calls(), [])
+        result = self.windows_preflight()
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_extracted_windows_preflight_inherits_scoped_checkout_config_and_runs_actual_cli(self):
+        self.windows_checkout()
+        workflow = yaml.load((ROOT / ".github/workflows/release.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        step = next(step for step in workflow["jobs"]["build-windows"]["steps"]
+                    if step.get("name") == "Check clean selected checkout before native work")
+        self.assertEqual(step["shell"], "bash")
+        self.assertEqual(step["env"]["GH_TOKEN"], "${{ github.token }}")
+        python = self.tools / "python3"
+        python.unlink()
+        python.write_text(
+            f"#!{sys.executable}\nimport os,sys\n"
+            f"os.execv({sys.executable!r}, [{sys.executable!r}, "
+            f"{str(self.bootstrap)!r}, *sys.argv[2:]])\n"
+        )
+        python.chmod(0o755)
+        env = {**self.env, **workflow["env"], "TEST_PLATFORM": "win32"}
+        result = subprocess.run(
+            ["/bin/bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", step["run"]],
+            cwd=self.local, env=env, capture_output=True, text=True, timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(self.calls()), 2)
+        self.assertEqual(self.git("status", "--porcelain"), "")
+        self.log.unlink()
+        (self.local / "native.cpp").write_bytes(b"raw mutation")
+        result = subprocess.run(
+            ["/bin/bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", step["run"]],
+            cwd=self.local, env=env, capture_output=True, text=True, timeout=60,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.calls(), [])
+
+    def test_build_config_is_inherited_before_every_checkout_and_overrides_host_autocrlf_without_writes(self):
+        workflow = yaml.load((ROOT / ".github/workflows/release.yml").read_text(),
+                             Loader=yaml.BaseLoader)
+        expected = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.autocrlf",
+                    "GIT_CONFIG_VALUE_0": "false"}
+        for job in workflow["jobs"].values():
+            for step in job["steps"]:
+                if step.get("uses", "").startswith("actions/checkout@"):
+                    inherited = {**workflow["env"], **job.get("env", {}), **step.get("env", {})}
+                    self.assertEqual({key: inherited[key] for key in expected}, expected)
+        target = self.local / "line-endings.txt"
+        target.write_bytes(b"first\nsecond\n")
+        self.git("add", "--", target.name)
+        self.git("commit", "--quiet", "-m", "LF checkout regression fixture")
+        host = self.root / "host.gitconfig"
+        raw = b"[core]\n\tautocrlf = true\n"
+        host.write_bytes(raw)
+        for scoped in (False, True):
+            checkout = self.root / ("scoped-clone" if scoped else "host-clone")
+            result = subprocess.run(
+                ["git", "clone", "--quiet", "--no-tags", "--no-hardlinks",
+                 str(self.local), str(checkout)],
+                env={**self.env, "GIT_CONFIG_GLOBAL": str(host),
+                     **(expected if scoped else {})},
+                capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((checkout / target.name).read_bytes(),
+                             b"first\nsecond\n" if scoped else b"first\r\nsecond\r\n")
+        self.assertEqual(host.read_bytes(), raw)
 
     def reset_api(self, state=None):
         self.state.write_text(json.dumps(state or {}))
