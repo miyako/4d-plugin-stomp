@@ -39,12 +39,15 @@ def entries(output, *, index=False):
 
 def actual_blob(path):
     path = Path(path)
-    if any(parent.is_symlink() for parent in path.parents):
+    if any(is_link(parent) for parent in path.parents):
         raise ValueError(f"Tracked path has a symlink ancestor: {path}")
-    mode = path.lstat().st_mode
+    status = path.lstat()
+    mode = status.st_mode
     if stat.S_ISLNK(mode):
         data = os.fsencode(os.readlink(path))
         return "120000", hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+    if getattr(status, "st_file_attributes", 0) & 0x400:
+        raise ValueError(f"Tracked regular file is a Windows reparse point: {path}")
     if not stat.S_ISREG(mode):
         raise ValueError(f"Expected regular tracked file: {path}")
     digest = hashlib.sha1(b"blob " + str(path.stat().st_size).encode() + b"\0")
@@ -52,6 +55,16 @@ def actual_blob(path):
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return ("100755" if mode & 0o111 else "100644"), digest.hexdigest()
+
+
+def is_link(path):
+    try:
+        status = path.lstat()
+    except FileNotFoundError:
+        return False
+    return stat.S_ISLNK(status.st_mode) or bool(
+        getattr(status, "st_file_attributes", 0) & 0x400
+    )
 
 
 def verify_checkout(sha, *, generated=lambda path: False, assets=(), final=False):

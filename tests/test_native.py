@@ -1,6 +1,8 @@
 """Narrow macOS cleanup and final-only output retention."""
 
 import shutil
+import stat
+from types import SimpleNamespace
 from unittest import mock
 
 from helper_support import Fixture, GitFixture, cwd
@@ -9,6 +11,25 @@ import repository
 
 
 class NativePreparationTests(Fixture):
+    def test_windows_reparse_ancestor_is_rejected_before_any_cleanup(self):
+        first = self.write(
+            "test/Plugins/STOMP.bundle/Contents/Windows64/STOMP.4DX", b"must remain"
+        )
+        self.write("Objs/Release/object.obj", b"must remain")
+        real = type(first).lstat
+
+        def reparse(path, *args, **kwargs):
+            status = real(path, *args, **kwargs)
+            if path == type(path)("Objs/Release"):
+                return SimpleNamespace(st_mode=stat.S_IFDIR, st_file_attributes=0x400)
+            return status
+
+        with cwd(self.root), mock.patch("pathlib.Path.lstat", new=reparse):
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                native.prepare_windows()
+        self.assertEqual(first.read_bytes(), b"must remain")
+        self.assertEqual((self.root / "Objs/Release/object.obj").read_bytes(), b"must remain")
+
     def test_windows_cleanup_matches_exact_release_x64_leaves_and_preserves_every_sibling(self):
         base = "test/Plugins/STOMP.bundle/Contents/"
         protected = (

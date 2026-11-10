@@ -7,6 +7,8 @@ import re
 import shutil
 import stat
 
+from repository import is_link
+
 
 PRODUCT = "STOMP"
 BASE = Path("test/Plugins/Default")
@@ -55,7 +57,7 @@ def dependency_symlink(path):
     if os.readlink(path) != "../libapr-1.la":
         raise ValueError(f"Unexpected APR Libtool symlink target: {path}")
     target = path.parent.parent / "libapr-1.la"
-    if any(entry.is_symlink() for entry in (target, *target.parents, *path.parents)) \
+    if any(is_link(entry) for entry in (target, *target.parents, *path.parents)) \
             or not stat.S_ISREG(target.lstat().st_mode):
         raise ValueError(f"APR Libtool target must be a same-build-root regular file: {path}")
     if path.resolve(strict=True) != target.resolve(strict=True):
@@ -69,13 +71,13 @@ def validate_paths(paths, *, dependency_links=False):
         for parent in (path, *path.parents):
             if parent == Path("."):
                 break
-            if parent.is_symlink():
+            if is_link(parent):
                 raise ValueError(f"Refusing symlink output: {parent}")
         if not path.resolve().is_relative_to(root):
             raise ValueError(f"Output escapes checkout: {path}")
         if path.is_dir():
             for descendant in path.rglob("*"):
-                if descendant.is_symlink() and not (
+                if is_link(descendant) and not (
                     dependency_links and dependency_symlink(descendant)
                 ):
                     raise ValueError(f"Refusing symlink output: {descendant}")

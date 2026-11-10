@@ -48,7 +48,7 @@ Windows cleanup removes only the exact STOMP Release x64 output leaves and
 `Objs/Release`. macOS cleanup removes exact generated leaves and STOMP
 intermediates, never whole bundles, `Default` siblings, QuickLook, custom
 resources, runtime dylibs, or the prebuilt Windows payload. Paths are
-symlink-prevalidated before any deletion; cleanup errors are fatal.
+symlink/reparse-point-prevalidated before any deletion; cleanup errors are fatal.
 
 The actual macOS product is
 `test/Plugins/Default/STOMP.bundle`, **not** the committed prebuilt sibling.

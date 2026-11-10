@@ -7,11 +7,13 @@ import plistlib
 import shutil
 import subprocess
 import sys
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from helper_support import Fixture, GitFixture, source
 import native
 import release
+import repository
 
 
 TAG, SHA = "v3.2.1", "a" * 40
@@ -602,6 +604,20 @@ class PublicationCLITests(GitFixture):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Working source/config differs", result.stderr)
         self.assertEqual(self.calls(), [])
+
+    def test_raw_regular_file_and_ancestor_windows_reparse_points_fail_closed(self):
+        target = self.local / "native.cpp"
+        real = Path.lstat
+        for marker in (target, target.parent):
+            def reparse(path, *args, **kwargs):
+                status = real(path, *args, **kwargs)
+                if path == marker:
+                    return SimpleNamespace(st_mode=status.st_mode, st_file_attributes=0x400)
+                return status
+
+            with patch.object(Path, "lstat", new=reparse):
+                with self.assertRaisesRegex(ValueError, "symlink|reparse"):
+                    repository.actual_blob(target)
 
     def test_every_controlled_intermediate_is_allowed_but_siblings_are_not(self):
         self.build()
