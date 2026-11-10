@@ -60,7 +60,7 @@ def actual_blob(path):
 def is_link(path):
     try:
         status = path.lstat()
-    except FileNotFoundError:
+    except (FileNotFoundError, NotADirectoryError):
         return False
     return stat.S_ISLNK(status.st_mode) or bool(
         getattr(status, "st_file_attributes", 0) & 0x400
